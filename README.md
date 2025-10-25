@@ -232,11 +232,5 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - [ ] Integration with more social platforms
 - [ ] Mobile application
 - [ ] Enterprise features and SSO
-
-## 📞 Support
-
-For questions and support, please open an issue in the GitHub repository.
-
 ---
 
-**Built with ❤️ using Multi-Agent AI Architecture**
