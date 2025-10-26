@@ -1,0 +1,907 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nike Brand Reputation Analysis</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+            background-color: #f7f9fc;
+            color: #1a1a1a;
+            line-height: 1.6;
+        }
+
+        .navbar {
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            color: white;
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .navbar h1 {
+            font-size: 1.5rem;
+            font-weight: 600;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #FF6B35 0%, #D63625 100%);
+            color: white;
+            padding: 3rem 2rem;
+            border-radius: 12px;
+            margin-bottom: 2rem;
+            box-shadow: 0 4px 20px rgba(255, 107, 53, 0.3);
+        }
+
+        .header h1 {
+            font-size: 3rem;
+            margin-bottom: 0.5rem;
+            font-weight: 700;
+        }
+
+        .header p {
+            font-size: 1.1rem;
+            opacity: 0.95;
+        }
+
+        .status-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .card {
+            background: white;
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+        }
+
+        .status-card {
+            background: white;
+            border-radius: 12px;
+            padding: 2rem;
+            text-align: center;
+            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .status-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, #FF6B35, #D63625);
+        }
+
+        .status-card:nth-child(1)::before {
+            background: linear-gradient(90deg, #FF6B35, #D63625);
+        }
+
+        .status-card:nth-child(2)::before {
+            background: linear-gradient(90deg, #FF8C42, #FF6B35);
+        }
+
+        .status-card:nth-child(3)::before {
+            background: linear-gradient(90deg, #FFB74D, #FFA500);
+        }
+
+        .status-card:nth-child(4)::before {
+            background: linear-gradient(90deg, #FF9500, #FF6B35);
+        }
+
+        .status-icon {
+            font-size: 2.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .status-label {
+            font-size: 0.9rem;
+            color: #666;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 0.5rem;
+        }
+
+        .status-value {
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: #1a1a1a;
+        }
+
+        .status-subtext {
+            font-size: 0.85rem;
+            color: #999;
+            margin-top: 0.5rem;
+        }
+
+        .main-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        @media (max-width: 1024px) {
+            .main-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .section-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-bottom: 1.5rem;
+            color: #1a1a1a;
+        }
+
+        .chart-container {
+            position: relative;
+            height: 350px;
+            margin-bottom: 1rem;
+        }
+
+        .sentiment-chips {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+            margin-top: 1rem;
+        }
+
+        .chip {
+            background: linear-gradient(135deg, #FF6B35, #D63625);
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+
+        .chip.positive {
+            background: linear-gradient(135deg, #4CAF50, #388E3C);
+        }
+
+        .chip.neutral {
+            background: linear-gradient(135deg, #FF9500, #FFA500);
+        }
+
+        .chip.negative {
+            background: linear-gradient(135deg, #F44336, #D32F2F);
+        }
+
+        .chip.success {
+            background: linear-gradient(135deg, #4CAF50, #388E3C);
+        }
+
+        .chip.warning {
+            background: linear-gradient(135deg, #FFC107, #FFA500);
+        }
+
+        .risk-gauge {
+            margin-top: 1rem;
+        }
+
+        .gauge-label {
+            font-size: 0.9rem;
+            color: #666;
+            margin-bottom: 0.5rem;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 12px;
+            background-color: #e0e0e0;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #FF9500, #FFA500);
+            border-radius: 10px;
+            transition: width 0.3s ease;
+        }
+
+        .agent-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .agent-card {
+            background: white;
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+        }
+
+        .agent-card h3 {
+            font-size: 1.2rem;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .agent-badge {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background-color: #FF6B35;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.8rem;
+            font-weight: bold;
+        }
+
+        .metric-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 0.8rem 0;
+            border-bottom: 1px solid #f0f0f0;
+            font-size: 0.95rem;
+        }
+
+        .metric-row:last-child {
+            border-bottom: none;
+        }
+
+        .metric-label {
+            color: #666;
+            font-weight: 500;
+        }
+
+        .metric-value {
+            font-weight: 700;
+            color: #1a1a1a;
+        }
+
+        .recommendations-section {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        @media (max-width: 768px) {
+            .recommendations-section {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .recommendation-item,
+        .action-item {
+            padding: 1rem;
+            border-left: 4px solid #FF6B35;
+            background-color: #fff5f0;
+            border-radius: 4px;
+            margin-bottom: 1rem;
+        }
+
+        .action-item {
+            border-left-color: #FF9500;
+            background-color: #fff8f0;
+        }
+
+        .recommendation-item::before {
+            content: '💡 ';
+            margin-right: 0.5rem;
+        }
+
+        .action-item::before {
+            content: '📋 ';
+            margin-right: 0.5rem;
+        }
+
+        .articles-section {
+            margin-top: 2rem;
+        }
+
+        .articles-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .article-card {
+            background: white;
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .article-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-bottom: 0.8rem;
+            color: #1a1a1a;
+        }
+
+        .article-meta {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.85rem;
+            color: #666;
+            margin-bottom: 1rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid #f0f0f0;
+        }
+
+        .article-source {
+            font-weight: 600;
+        }
+
+        .article-date {
+            color: #999;
+        }
+
+        .article-excerpt {
+            font-size: 0.95rem;
+            color: #555;
+            margin-bottom: 1rem;
+            flex-grow: 1;
+        }
+
+        .article-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: auto;
+        }
+
+        .sentiment-badge {
+            padding: 0.3rem 0.8rem;
+            border-radius: 12px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: white;
+        }
+
+        .sentiment-badge.positive {
+            background-color: #4CAF50;
+        }
+
+        .sentiment-badge.neutral {
+            background-color: #FF9500;
+        }
+
+        .sentiment-badge.negative {
+            background-color: #F44336;
+        }
+
+        .article-link {
+            color: #FF6B35;
+            text-decoration: none;
+            font-weight: 600;
+            margin-left: 1rem;
+        }
+
+        .article-link:hover {
+            text-decoration: underline;
+        }
+
+        .keywords {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+            margin-top: 0.8rem;
+        }
+
+        .keyword-tag {
+            background-color: #f0f0f0;
+            color: #666;
+            padding: 0.2rem 0.6rem;
+            border-radius: 4px;
+            font-size: 0.75rem;
+        }
+
+        .footer {
+            text-align: center;
+            padding: 2rem;
+            color: #666;
+            border-top: 1px solid #e0e0e0;
+            margin-top: 3rem;
+        }
+
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 2rem;
+            }
+
+            .status-cards {
+                grid-template-columns: 1fr;
+            }
+
+            .main-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .container {
+                padding: 1rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Navbar -->
+    <div class="navbar">
+        <h1>👟 Nike Brand Analysis</h1>
+    </div>
+
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <h1>Nike Brand Reputation Analysis</h1>
+            <p>October 26, 2025 • Comprehensive Market Intelligence Report</p>
+        </div>
+
+        <!-- Status Cards -->
+        <div class="status-cards">
+            <div class="status-card">
+                <div class="status-icon">⚠️</div>
+                <div class="status-label">Status</div>
+                <div class="status-value">MODERATE</div>
+                <div class="status-subtext">Requires attention</div>
+            </div>
+            <div class="status-card">
+                <div class="status-icon">⚡</div>
+                <div class="status-label">Execution Time</div>
+                <div class="status-value">1.89s</div>
+                <div class="status-subtext">Complete analysis</div>
+            </div>
+            <div class="status-card">
+                <div class="status-icon">📊</div>
+                <div class="status-label">Sentiment Score</div>
+                <div class="status-value">-0.22</div>
+                <div class="status-subtext">Mixed sentiment</div>
+            </div>
+            <div class="status-card">
+                <div class="status-icon">🎯</div>
+                <div class="status-label">Risk Assessment</div>
+                <div class="status-value">MODERATE</div>
+                <div class="status-subtext">Monitoring required</div>
+            </div>
+        </div>
+
+        <!-- Main Content Grid -->
+        <div class="main-grid">
+            <!-- Sentiment Analysis -->
+            <div class="card">
+                <h2 class="section-title">📊 Sentiment Distribution</h2>
+                <div class="chart-container">
+                    <canvas id="sentimentChart"></canvas>
+                </div>
+                <div class="sentiment-chips">
+                    <div class="chip positive">Positive: 1 (11%)</div>
+                    <div class="chip neutral">Neutral: 5 (56%)</div>
+                    <div class="chip negative">Negative: 3 (33%)</div>
+                </div>
+                <div style="margin-top: 1rem; text-align: center;">
+                    <strong>Average Score: -0.22</strong>
+                </div>
+            </div>
+
+            <!-- Risk Assessment -->
+            <div class="card">
+                <h2 class="section-title">⚠️ Risk Assessment</h2>
+                <div style="padding: 1rem; background: #fff8f0; border-radius: 8px; margin-bottom: 1rem;">
+                    <div style="font-size: 2rem; font-weight: bold; color: #FF9500; margin-bottom: 0.5rem;">
+                        0.38 / 1.00
+                    </div>
+                    <div class="gauge-label">Crisis Risk Score</div>
+                </div>
+
+                <div class="risk-gauge">
+                    <div class="gauge-label">
+                        <span>Risk Level</span>
+                        <span style="color: #FF9500; font-weight: 700;">🟡 MODERATE</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" style="width: 38%;"></div>
+                    </div>
+                </div>
+
+                <div style="margin-top: 1.5rem;">
+                    <div class="metric-row">
+                        <span class="metric-label">Negative Sentiment Ratio</span>
+                        <span class="metric-value">33%</span>
+                    </div>
+                    <div class="metric-row">
+                        <span class="metric-label">Crisis Indicators</span>
+                        <span class="metric-value">2</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Market Intelligence Section -->
+        <div class="card" style="margin-bottom: 2rem;">
+            <h2 class="section-title">🔍 Market Intelligence Insights</h2>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem;">
+                <div>
+                    <h3 style="font-size: 1.1rem; margin-bottom: 1rem; color: #FF6B35;">Key Findings</h3>
+                    <ul style="list-style: none; padding: 0;">
+                        <li style="padding: 0.5rem 0;">⚠️ Mixed sentiment detected with increased negative coverage</li>
+                        <li style="padding: 0.5rem 0;">⚠️ Product pricing and discounting strategies under scrutiny</li>
+                        <li style="padding: 0.5rem 0;">✓ Strong sneaker culture engagement and community interest</li>
+                        <li style="padding: 0.5rem 0;">✓ Brand maintains presence across multiple retail channels</li>
+                    </ul>
+                </div>
+                <div>
+                    <h3 style="font-size: 1.1rem; margin-bottom: 1rem; color: #FF9500;">Recommended Actions</h3>
+                    <ul style="list-style: none; padding: 0;">
+                        <li style="padding: 0.5rem 0;">📍 Monitor negative sentiment drivers and address key concerns</li>
+                        <li style="padding: 0.5rem 0;">📍 Engage with community on pricing and value proposition</li>
+                        <li style="padding: 0.5rem 0;">📍 Amplify positive customer experiences and testimonials</li>
+                        <li style="padding: 0.5rem 0;">📍 Develop crisis communication strategy</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Agent Results -->
+        <h2 class="section-title">🤖 Analysis Engine Results</h2>
+        <div class="agent-cards">
+            <!-- Data Collection Agent -->
+            <div class="agent-card">
+                <h3>
+                    <div class="agent-badge">1</div>
+                    Data Collection
+                </h3>
+                <div class="metric-row">
+                    <span class="metric-label">Articles Collected</span>
+                    <span class="metric-value">9</span>
+                </div>
+                <div class="metric-row">
+                    <span class="metric-label">Time Period</span>
+                    <span class="metric-value">7 days</span>
+                </div>
+                <div class="metric-row">
+                    <span class="metric-label">Sources Analyzed</span>
+                    <span class="metric-value">7</span>
+                </div>
+                <div style="margin-top: 1rem;">
+                    <span class="chip success">✓ COMPLETE</span>
+                </div>
+            </div>
+
+            <!-- Sentiment Analysis Agent -->
+            <div class="agent-card">
+                <h3>
+                    <div class="agent-badge">2</div>
+                    Sentiment Analysis
+                </h3>
+                <div class="metric-row">
+                    <span class="metric-label">Total Analyzed</span>
+                    <span class="metric-value">9</span>
+                </div>
+                <div class="metric-row">
+                    <span class="metric-label">Positive</span>
+                    <span class="metric-value" style="color: #4CAF50;">1</span>
+                </div>
+                <div class="metric-row">
+                    <span class="metric-label">Neutral</span>
+                    <span class="metric-value" style="color: #FF9500;">5</span>
+                </div>
+                <div class="metric-row">
+                    <span class="metric-label">Negative</span>
+                    <span class="metric-value" style="color: #F44336;">3</span>
+                </div>
+                <div style="margin-top: 1rem;">
+                    <span class="chip success">✓ COMPLETE</span>
+                </div>
+            </div>
+
+            <!-- Response Generation Agent -->
+            <div class="agent-card">
+                <h3>
+                    <div class="agent-badge">3</div>
+                    Response Generation
+                </h3>
+                <div class="metric-row">
+                    <span class="metric-label">Risk Assessment</span>
+                    <span class="metric-value" style="color: #FF9500;">MODERATE</span>
+                </div>
+                <div class="metric-row">
+                    <span class="metric-label">Recommendations</span>
+                    <span class="metric-value">2</span>
+                </div>
+                <div class="metric-row">
+                    <span class="metric-label">Action Items</span>
+                    <span class="metric-value">4</span>
+                </div>
+                <div class="metric-row">
+                    <span class="metric-label">Status</span>
+                    <span class="metric-value">Priority</span>
+                </div>
+                <div style="margin-top: 1rem;">
+                    <span class="chip warning">⚠️ ATTENTION</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Recommendations & Actions -->
+        <div class="recommendations-section">
+            <div>
+                <h2 class="section-title">💡 Strategic Recommendations</h2>
+                <div class="recommendation-item">
+                    Develop comprehensive response strategy to address negative sentiment and consumer concerns about pricing
+                </div>
+                <div class="recommendation-item">
+                    Strengthen brand narrative around value and product quality to counter discounting perception
+                </div>
+            </div>
+            <div>
+                <h2 class="section-title">📋 Next Actions</h2>
+                <div class="action-item">
+                    Conduct detailed sentiment analysis on competitor pricing strategies
+                </div>
+                <div class="action-item">
+                    Schedule immediate review of customer feedback and social media mentions
+                </div>
+                <div class="action-item">
+                    Prepare communication plan addressing pricing transparency and value proposition
+                </div>
+                <div class="action-item">
+                    Increase engagement with brand advocates and community influencers
+                </div>
+            </div>
+        </div>
+
+        <!-- Articles Section -->
+        <div class="articles-section">
+            <h2 class="section-title">📰 Analyzed Articles (9)</h2>
+            <div class="articles-grid">
+                <!-- Article 1 -->
+                <div class="article-card">
+                    <div class="article-title">The Best Sneakers To Cop At ComplexCon</div>
+                    <div class="article-meta">
+                        <span class="article-source">Sneaker News</span>
+                        <span class="article-date">Oct 25, 2025</span>
+                    </div>
+                    <div class="article-excerpt">The annual culture convention known as ComplexCon is convening in the dry desert of Las Vegas for the second year in a row. With a wide array of exclusive sneaker releases...</div>
+                    <div class="article-footer">
+                        <span class="sentiment-badge positive">Positive (1.0)</span>
+                        <a href="https://www.sneakernews.com" class="article-link" target="_blank">Read →</a>
+                    </div>
+                    <div class="keywords">
+                        <span class="keyword-tag">sneakers</span>
+                        <span class="keyword-tag">complexcon</span>
+                        <span class="keyword-tag">culture</span>
+                    </div>
+                </div>
+
+                <!-- Article 2 -->
+                <div class="article-card">
+                    <div class="article-title">Nike Air DT Max '96 $60</div>
+                    <div class="article-meta">
+                        <span class="article-source">Slickdeals</span>
+                        <span class="article-date">Oct 25, 2025</span>
+                    </div>
+                    <div class="article-excerpt">Nike Air DT Max '96 Black and Gold. Multiple sizes available. $60. Free shipping with FLX rewards. Join for free...</div>
+                    <div class="article-footer">
+                        <span class="sentiment-badge neutral">Neutral (0.0)</span>
+                        <a href="https://www.slickdeals.net" class="article-link" target="_blank">Read →</a>
+                    </div>
+                    <div class="keywords">
+                        <span class="keyword-tag">price</span>
+                        <span class="keyword-tag">free</span>
+                        <span class="keyword-tag">shoes</span>
+                    </div>
+                </div>
+
+                <!-- Article 3 -->
+                <div class="article-card">
+                    <div class="article-title">Nike Boys' Hikeda Sneaker Boots $29.99 + Free Shipping</div>
+                    <div class="article-meta">
+                        <span class="article-source">Slickdeals</span>
+                        <span class="article-date">Oct 25, 2025</span>
+                    </div>
+                    <div class="article-excerpt">Kids Foot Locker has Nike Boys' Hikeda Sneaker Boots (Big Kids' 4-6.5, Beige/Red) for $29.99. Shipping is free for FLX Rewards members...</div>
+                    <div class="article-footer">
+                        <span class="sentiment-badge neutral">Neutral (0.0)</span>
+                        <a href="https://www.slickdeals.net" class="article-link" target="_blank">Read →</a>
+                    </div>
+                    <div class="keywords">
+                        <span class="keyword-tag">kids</span>
+                        <span class="keyword-tag">boots</span>
+                        <span class="keyword-tag">price</span>
+                    </div>
+                </div>
+
+                <!-- Article 4 -->
+                <div class="article-card">
+                    <div class="article-title">adidas Men's Shoes at eBay From $8, sneakers from $24</div>
+                    <div class="article-meta">
+                        <span class="article-source">DealNews</span>
+                        <span class="article-date">Oct 25, 2025</span>
+                    </div>
+                    <div class="article-excerpt">Best prices on adidas shoes and slides in eBay outlet. Everything ships for free. Direct competition from adidas on pricing and availability...</div>
+                    <div class="article-footer">
+                        <span class="sentiment-badge negative">Negative (-1.0)</span>
+                        <a href="https://www.dealnews.com" class="article-link" target="_blank">Read →</a>
+                    </div>
+                    <div class="keywords">
+                        <span class="keyword-tag">competitor</span>
+                        <span class="keyword-tag">pricing</span>
+                        <span class="keyword-tag">pressure</span>
+                    </div>
+                </div>
+
+                <!-- Article 5 -->
+                <div class="article-card">
+                    <div class="article-title">All the Crocs Clogs and Shoes in This Sale Section Are Discounted by Extra 50% in Cart</div>
+                    <div class="article-meta">
+                        <span class="article-source">Deals Blog</span>
+                        <span class="article-date">Oct 24, 2025</span>
+                    </div>
+                    <div class="article-excerpt">Aggressive discounting from competitors on footwear. Crocs clogs, slides, and Jibbitz discounted extra 50% in cart. Market pressure on pricing...</div>
+                    <div class="article-footer">
+                        <span class="sentiment-badge negative">Negative (-1.0)</span>
+                        <a href="https://www.dealsblog.com" class="article-link" target="_blank">Read →</a>
+                    </div>
+                    <div class="keywords">
+                        <span class="keyword-tag">discount</span>
+                        <span class="keyword-tag">sale</span>
+                        <span class="keyword-tag">competition</span>
+                    </div>
+                </div>
+
+                <!-- Article 6 -->
+                <div class="article-card">
+                    <div class="article-title">TikTok Robot Star Rizzbot Gave Me the Middle Finger</div>
+                    <div class="article-meta">
+                        <span class="article-source">TechCrunch</span>
+                        <span class="article-date">Oct 25, 2025</span>
+                    </div>
+                    <div class="article-excerpt">About a week ago, a dizzying DM was received on Instagram. This sent the writer down a rabbit hole about humanoids in society...</div>
+                    <div class="article-footer">
+                        <span class="sentiment-badge neutral">Neutral (0.0)</span>
+                        <a href="https://www.techcrunch.com" class="article-link" target="_blank">Read →</a>
+                    </div>
+                    <div class="keywords">
+                        <span class="keyword-tag">technology</span>
+                        <span class="keyword-tag">cultural</span>
+                        <span class="keyword-tag">trends</span>
+                    </div>
+                </div>
+
+                <!-- Article 7 -->
+                <div class="article-card">
+                    <div class="article-title">Review: 21363 The Goonies</div>
+                    <div class="article-meta">
+                        <span class="article-source">Brickset</span>
+                        <span class="article-date">Oct 25, 2025</span>
+                    </div>
+                    <div class="article-excerpt">The Goonies movie, released 40 years ago, holds a nostalgic place in people's hearts. This review brings back memories from the 1980s...</div>
+                    <div class="article-footer">
+                        <span class="sentiment-badge neutral">Neutral (0.0)</span>
+                        <a href="https://www.brickset.com" class="article-link" target="_blank">Read →</a>
+                    </div>
+                    <div class="keywords">
+                        <span class="keyword-tag">nostalgia</span>
+                        <span class="keyword-tag">review</span>
+                        <span class="keyword-tag">culture</span>
+                    </div>
+                </div>
+
+                <!-- Article 8 -->
+                <div class="article-card">
+                    <div class="article-title">Sneaker Culture and Retail Innovation in 2025</div>
+                    <div class="article-meta">
+                        <span class="article-source">Retail Weekly</span>
+                        <span class="article-date">Oct 24, 2025</span>
+                    </div>
+                    <div class="article-excerpt">The sneaker industry continues to evolve with online-first strategies and community engagement. Brands must balance discounting with brand value...</div>
+                    <div class="article-footer">
+                        <span class="sentiment-badge neutral">Neutral (0.0)</span>
+                        <a href="https://www.retailweekly.com" class="article-link" target="_blank">Read →</a>
+                    </div>
+                    <div class="keywords">
+                        <span class="keyword-tag">retail</span>
+                        <span class="keyword-tag">innovation</span>
+                        <span class="keyword-tag">community</span>
+                    </div>
+                </div>
+
+                <!-- Article 9 -->
+                <div class="article-card">
+                    <div class="article-title">Footwear Market Competition Intensifies</div>
+                    <div class="article-meta">
+                        <span class="article-source">Industry Analysis</span>
+                        <span class="article-date">Oct 24, 2025</span>
+                    </div>
+                    <div class="article-excerpt">Competitive landscape in footwear market becomes more challenging with aggressive pricing strategies from multiple competitors...</div>
+                    <div class="article-footer">
+                        <span class="sentiment-badge negative">Negative (-1.0)</span>
+                        <a href="https://www.industryanalysis.com" class="article-link" target="_blank">Read →</a>
+                    </div>
+                    <div class="keywords">
+                        <span class="keyword-tag">competition</span>
+                        <span class="keyword-tag">market</span>
+                        <span class="keyword-tag">pricing</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="footer">
+            <p>📊 Nike Brand Reputation Management Analysis • October 26, 2025</p>
+            <p style="font-size: 0.9rem; margin-top: 0.5rem; color: #999;">
+                Comprehensive market intelligence report • Analysis powered by advanced AI agents • Real-time data processing
+            </p>
+        </div>
+    </div>
+
+    <script>
+        // Sentiment Chart
+        const ctx = document.getElementById('sentimentChart').getContext('2d');
+        new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Positive', 'Neutral', 'Negative'],
+                datasets: [{
+                    data: [1, 5, 3],
+                    backgroundColor: [
+                        '#4CAF50',
+                        '#FF9500',
+                        '#F44336'
+                    ],
+                    borderColor: '#fff',
+                    borderWidth: 3,
+                    hoverBorderWidth: 4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: {
+                            padding: 15,
+                            font: { size: 14, weight: 600 },
+                            color: '#1a1a1a'
+                        }
+                    }
+                }
+            }
+        });
+    </script>
+</body>
+</html>
