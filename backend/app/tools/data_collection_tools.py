@@ -14,8 +14,15 @@ import json
 import re
 from urllib.parse import quote_plus
 
-import tweepy
-import praw
+try:
+    import tweepy
+except ImportError:  # Tweepy is optional when Twitter collection is disabled
+    tweepy = None
+
+try:
+    import praw
+except ImportError:  # PRAW is optional when Reddit collection is disabled
+    praw = None
 from langchain.tools import BaseTool
 from loguru import logger
 
@@ -45,6 +52,12 @@ class TwitterDataTool(BaseTool):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self._client = None
+        if not settings.ENABLE_TWITTER:
+            logger.info("ℹ️ Twitter data collection disabled via configuration")
+            return
+        if tweepy is None:
+            logger.warning("⚠️ Tweepy not installed - Twitter collection will use mock data")
+            return
         self._initialize_twitter_client()
     
     @property
@@ -55,7 +68,7 @@ class TwitterDataTool(BaseTool):
     def _initialize_twitter_client(self):
         """Initialize Twitter API client"""
         try:
-            if settings.TWITTER_BEARER_TOKEN:
+            if tweepy and settings.TWITTER_BEARER_TOKEN:
                 self._client = tweepy.Client(
                     bearer_token=settings.TWITTER_BEARER_TOKEN,
                     wait_on_rate_limit=True
@@ -69,8 +82,20 @@ class TwitterDataTool(BaseTool):
     def _run(self, keywords: str, max_results: int = 20, hours_back: int = 24) -> str:
         """Collect Twitter data synchronously"""
         try:
+            if not settings.ENABLE_TWITTER:
+                return json.dumps({
+                    "platform": "twitter",
+                    "mentions_found": 0,
+                    "keywords_searched": [k.strip() for k in keywords.split(",")],
+                    "message": "Twitter collection disabled",
+                    "mock_mode": True
+                }, indent=2)
+
+            if tweepy is None:
+                return json.dumps(self._mock_twitter_data(keywords, max_results), indent=2)
+
             if not self.client:
-                return self._mock_twitter_data(keywords, max_results)
+                return json.dumps(self._mock_twitter_data(keywords, max_results), indent=2)
             
             # Build search query
             keyword_list = [k.strip() for k in keywords.split(",")]
@@ -192,6 +217,12 @@ class RedditDataTool(BaseTool):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self._reddit = None
+        if not settings.ENABLE_REDDIT:
+            logger.info("ℹ️ Reddit data collection disabled via configuration")
+            return
+        if praw is None:
+            logger.warning("⚠️ PRAW not installed - Reddit collection will use mock data")
+            return
         self._initialize_reddit_client()
     
     @property
@@ -202,7 +233,7 @@ class RedditDataTool(BaseTool):
     def _initialize_reddit_client(self):
         """Initialize Reddit API client"""
         try:
-            if all([settings.REDDIT_CLIENT_ID, settings.REDDIT_CLIENT_SECRET, settings.REDDIT_USER_AGENT]):
+            if praw and all([settings.REDDIT_CLIENT_ID, settings.REDDIT_CLIENT_SECRET, settings.REDDIT_USER_AGENT]):
                 self._reddit = praw.Reddit(
                     client_id=settings.REDDIT_CLIENT_ID,
                     client_secret=settings.REDDIT_CLIENT_SECRET,
@@ -217,8 +248,17 @@ class RedditDataTool(BaseTool):
     def _run(self, keywords: str, max_results: int = 20, subreddits: str = "all") -> str:
         """Collect Reddit data synchronously"""
         try:
-            if not self.reddit:
-                return json.dumps(self._mock_reddit_data(keywords, max_results))
+            if not settings.ENABLE_REDDIT:
+                return json.dumps({
+                    "platform": "reddit",
+                    "mentions_found": 0,
+                    "keywords_searched": [k.strip() for k in keywords.split(",")],
+                    "message": "Reddit collection disabled",
+                    "mock_mode": True
+                }, indent=2)
+
+            if praw is None or not self.reddit:
+                return json.dumps(self._mock_reddit_data(keywords, max_results), indent=2)
             
             keyword_list = [k.strip() for k in keywords.split(",")]
             subreddit_list = [s.strip() for s in subreddits.split(",")]
@@ -492,49 +532,82 @@ class MultiPlatformDataCollector:
     """Orchestrator for collecting data from multiple platforms simultaneously"""
     
     def __init__(self):
-        self.twitter_tool = TwitterDataTool()
-        self.reddit_tool = RedditDataTool()
+        self.twitter_tool = TwitterDataTool() if settings.ENABLE_TWITTER else None
+        self.reddit_tool = RedditDataTool() if settings.ENABLE_REDDIT else None
         self.news_tool = NewsDataTool()
         
         logger.info("🌐 Multi-platform data collector initialized")
     
     def get_all_tools(self) -> List[BaseTool]:
         """Get all data collection tools for LangChain agent"""
-        return [
-            self.twitter_tool,
-            self.reddit_tool,
-            self.news_tool
-        ]
+        tools: List[BaseTool] = []
+        if self.twitter_tool:
+            tools.append(self.twitter_tool)
+        if self.reddit_tool:
+            tools.append(self.reddit_tool)
+        if self.news_tool:
+            tools.append(self.news_tool)
+        return tools
+
+    def get_available_platforms(self) -> List[str]:
+        """Return platform identifiers that can actually run"""
+        platforms: List[str] = []
+        if self.twitter_tool:
+            platforms.append("twitter")
+        if self.reddit_tool:
+            platforms.append("reddit")
+        if self.news_tool:
+            platforms.append("news")
+        return platforms
     
     async def collect_comprehensive_data(
-        self, 
-        keywords: List[str], 
-        platforms: List[str] = ["twitter", "reddit", "news"],
-        max_results_per_platform: int = 20
+        self,
+        keywords: List[str],
+        platforms: Optional[List[str]] = None,
+        max_results_per_platform: int = 20,
+        days_back: int = 7
     ) -> Dict[str, Any]:
         """Collect data from multiple platforms simultaneously"""
         
         keywords_str = ", ".join(keywords)
         collection_tasks = []
+
+        if platforms is None:
+            platforms = self.get_available_platforms()
+            if not platforms:
+                platforms = ["news"]
+
+        requested_platforms = set(platforms)
         
         # Create async tasks for each platform
-        if "twitter" in platforms:
+        if "twitter" in requested_platforms and self.twitter_tool:
             collection_tasks.append(
                 ("twitter", self.twitter_tool._arun(keywords_str, max_results_per_platform))
             )
+        elif "twitter" in requested_platforms:
+            logger.info("ℹ️ Twitter platform requested but unavailable - skipping")
+            requested_platforms.remove("twitter")
         
-        if "reddit" in platforms:
+        if "reddit" in requested_platforms and self.reddit_tool:
             collection_tasks.append(
                 ("reddit", self.reddit_tool._arun(keywords_str, max_results_per_platform, "technology,business,news"))
             )
+        elif "reddit" in requested_platforms:
+            logger.info("ℹ️ Reddit platform requested but unavailable - skipping")
+            requested_platforms.remove("reddit")
         
-        if "news" in platforms:
+        if "news" in requested_platforms and self.news_tool:
             collection_tasks.append(
-                ("news", self.news_tool._arun(keywords_str, max_results_per_platform))
+                ("news", self.news_tool._arun(keywords_str, max_results_per_platform, days_back))
             )
+        elif "news" in requested_platforms:
+            logger.warning("⚠️ News platform missing - ensure configuration is correct")
+            requested_platforms.remove("news")
         
         # Execute all collections simultaneously
         results = {}
+        active_platforms = [platform for platform, _ in collection_tasks]
+
         for platform, task in collection_tasks:
             try:
                 result_json = await task
@@ -558,7 +631,7 @@ class MultiPlatformDataCollector:
         aggregated_result = {
             "collection_timestamp": datetime.utcnow().isoformat(),
             "keywords_searched": keywords,
-            "platforms_searched": platforms,
+            "platforms_searched": active_platforms,
             "total_mentions_found": total_mentions,
             "platform_results": results,
             "all_mentions": all_mentions,

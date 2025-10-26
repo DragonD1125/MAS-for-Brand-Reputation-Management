@@ -1,0 +1,891 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NVIDIA Brand Reputation Analysis - Demo</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+            background-color: #f7f9fc;
+            color: #1a1a1a;
+            line-height: 1.6;
+        }
+
+        .navbar {
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            color: white;
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .navbar h1 {
+            font-size: 1.5rem;
+            font-weight: 600;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 3rem 2rem;
+            border-radius: 12px;
+            margin-bottom: 2rem;
+            box-shadow: 0 4px 20px rgba(102, 126, 234, 0.3);
+        }
+
+        .header h1 {
+            font-size: 3rem;
+            margin-bottom: 0.5rem;
+            font-weight: 700;
+        }
+
+        .header p {
+            font-size: 1.1rem;
+            opacity: 0.95;
+        }
+
+        .status-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .card {
+            background: white;
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+        }
+
+        .status-card {
+            background: white;
+            border-radius: 12px;
+            padding: 2rem;
+            text-align: center;
+            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .status-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+        }
+
+        .status-card:nth-child(1)::before {
+            background: linear-gradient(90deg, #667eea, #764ba2);
+        }
+
+        .status-card:nth-child(2)::before {
+            background: linear-gradient(90deg, #f093fb, #f5576c);
+        }
+
+        .status-card:nth-child(3)::before {
+            background: linear-gradient(90deg, #4facfe, #00f2fe);
+        }
+
+        .status-card:nth-child(4)::before {
+            background: linear-gradient(90deg, #43e97b, #38f9d7);
+        }
+
+        .status-icon {
+            font-size: 2.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .status-label {
+            font-size: 0.9rem;
+            color: #666;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 0.5rem;
+        }
+
+        .status-value {
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: #1a1a1a;
+        }
+
+        .status-subtext {
+            font-size: 0.85rem;
+            color: #999;
+            margin-top: 0.5rem;
+        }
+
+        .main-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        @media (max-width: 1024px) {
+            .main-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .section-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-bottom: 1.5rem;
+            color: #1a1a1a;
+        }
+
+        .chart-container {
+            position: relative;
+            height: 350px;
+            margin-bottom: 1rem;
+        }
+
+        .sentiment-chips {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+            margin-top: 1rem;
+        }
+
+        .chip {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+
+        .chip.positive {
+            background: linear-gradient(135deg, #2e7d32, #1b5e20);
+        }
+
+        .chip.neutral {
+            background: linear-gradient(135deg, #0288d1, #01579b);
+        }
+
+        .chip.negative {
+            background: linear-gradient(135deg, #c62828, #b71c1c);
+        }
+
+        .chip.success {
+            background: linear-gradient(135deg, #43e97b, #38f9d7);
+        }
+
+        .chip.warning {
+            background: linear-gradient(135deg, #f093fb, #f5576c);
+        }
+
+        .risk-gauge {
+            margin-top: 1rem;
+        }
+
+        .gauge-label {
+            font-size: 0.9rem;
+            color: #666;
+            margin-bottom: 0.5rem;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 12px;
+            background-color: #e0e0e0;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #2e7d32, #1b5e20);
+            border-radius: 10px;
+            transition: width 0.3s ease;
+        }
+
+        .agent-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .agent-card {
+            background: white;
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+        }
+
+        .agent-card h3 {
+            font-size: 1.2rem;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .agent-badge {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background-color: #2e7d32;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.8rem;
+            font-weight: bold;
+        }
+
+        .metric-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 0.8rem 0;
+            border-bottom: 1px solid #f0f0f0;
+            font-size: 0.95rem;
+        }
+
+        .metric-row:last-child {
+            border-bottom: none;
+        }
+
+        .metric-label {
+            color: #666;
+            font-weight: 500;
+        }
+
+        .metric-value {
+            font-weight: 700;
+            color: #1a1a1a;
+        }
+
+        .recommendations-section {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        @media (max-width: 768px) {
+            .recommendations-section {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .recommendation-item,
+        .action-item {
+            padding: 1rem;
+            border-left: 4px solid #667eea;
+            background-color: #f8f9fb;
+            border-radius: 4px;
+            margin-bottom: 1rem;
+        }
+
+        .action-item {
+            border-left-color: #f093fb;
+        }
+
+        .recommendation-item::before {
+            content: '💡 ';
+            margin-right: 0.5rem;
+        }
+
+        .action-item::before {
+            content: '📋 ';
+            margin-right: 0.5rem;
+        }
+
+        .articles-section {
+            margin-top: 2rem;
+        }
+
+        .articles-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .article-card {
+            background: white;
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .article-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-bottom: 0.8rem;
+            color: #1a1a1a;
+        }
+
+        .article-meta {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.85rem;
+            color: #666;
+            margin-bottom: 1rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid #f0f0f0;
+        }
+
+        .article-source {
+            font-weight: 600;
+        }
+
+        .article-date {
+            color: #999;
+        }
+
+        .article-excerpt {
+            font-size: 0.95rem;
+            color: #555;
+            margin-bottom: 1rem;
+            flex-grow: 1;
+        }
+
+        .article-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: auto;
+        }
+
+        .sentiment-badge {
+            padding: 0.3rem 0.8rem;
+            border-radius: 12px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: white;
+        }
+
+        .sentiment-badge.positive {
+            background-color: #2e7d32;
+        }
+
+        .sentiment-badge.neutral {
+            background-color: #0288d1;
+        }
+
+        .sentiment-badge.negative {
+            background-color: #c62828;
+        }
+
+        .article-link {
+            color: #667eea;
+            text-decoration: none;
+            font-weight: 600;
+            margin-left: 1rem;
+        }
+
+        .article-link:hover {
+            text-decoration: underline;
+        }
+
+        .keywords {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+            margin-top: 0.8rem;
+        }
+
+        .keyword-tag {
+            background-color: #f0f0f0;
+            color: #666;
+            padding: 0.2rem 0.6rem;
+            border-radius: 4px;
+            font-size: 0.75rem;
+        }
+
+        .footer {
+            text-align: center;
+            padding: 2rem;
+            color: #666;
+            border-top: 1px solid #e0e0e0;
+            margin-top: 3rem;
+        }
+
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 2rem;
+            }
+
+            .status-cards {
+                grid-template-columns: 1fr;
+            }
+
+            .main-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .container {
+                padding: 1rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Navbar -->
+    <div class="navbar">
+        <h1>📊 NVIDIA Brand Analysis Demo</h1>
+    </div>
+
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <h1>NVIDIA Brand Reputation Analysis</h1>
+            <p>October 26, 2025 • Demo Prototype (Data Embedded)</p>
+        </div>
+
+        <!-- Status Cards -->
+        <div class="status-cards">
+            <div class="status-card">
+                <div class="status-icon">✅</div>
+                <div class="status-label">Status</div>
+                <div class="status-value">SUCCESS</div>
+                <div class="status-subtext">All systems operational</div>
+            </div>
+            <div class="status-card">
+                <div class="status-icon">⚡</div>
+                <div class="status-label">Execution Time</div>
+                <div class="status-value">0.28s</div>
+                <div class="status-subtext">Complete analysis</div>
+            </div>
+            <div class="status-card">
+                <div class="status-icon">🔐</div>
+                <div class="status-label">Workflow ID</div>
+                <div class="status-value">wf_1761...</div>
+                <div class="status-subtext">Unique identifier</div>
+            </div>
+            <div class="status-card">
+                <div class="status-icon">🎯</div>
+                <div class="status-label">Crisis Level</div>
+                <div class="status-value">LOW</div>
+                <div class="status-subtext">No immediate threat</div>
+            </div>
+        </div>
+
+        <!-- Main Content Grid -->
+        <div class="main-grid">
+            <!-- Sentiment Analysis -->
+            <div class="card">
+                <h2 class="section-title">📊 Sentiment Analysis</h2>
+                <div class="chart-container">
+                    <canvas id="sentimentChart"></canvas>
+                </div>
+                <div class="sentiment-chips">
+                    <div class="chip positive">Positive: 1 (10%)</div>
+                    <div class="chip neutral">Neutral: 7 (70%)</div>
+                    <div class="chip negative">Negative: 2 (20%)</div>
+                </div>
+                <div style="margin-top: 1rem; text-align: center;">
+                    <strong>Average Score: -0.10</strong>
+                </div>
+            </div>
+
+            <!-- Risk Assessment -->
+            <div class="card">
+                <h2 class="section-title">⚠️ Risk Assessment</h2>
+                <div style="padding: 1rem; background: #f8f9fb; border-radius: 8px; margin-bottom: 1rem;">
+                    <div style="font-size: 2rem; font-weight: bold; color: #2e7d32; margin-bottom: 0.5rem;">
+                        0.12 / 1.00
+                    </div>
+                    <div class="gauge-label">Crisis Score</div>
+                </div>
+
+                <div class="risk-gauge">
+                    <div class="gauge-label">
+                        <span>Risk Level</span>
+                        <span style="color: #2e7d32; font-weight: 700;">🟢 LOW</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" style="width: 12%;"></div>
+                    </div>
+                </div>
+
+                <div style="margin-top: 1.5rem;">
+                    <div class="metric-row">
+                        <span class="metric-label">Negative Sentiment Ratio</span>
+                        <span class="metric-value">20%</span>
+                    </div>
+                    <div class="metric-row">
+                        <span class="metric-label">Crisis Indicators Found</span>
+                        <span class="metric-value">0</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Agent Results -->
+        <h2 class="section-title">🤖 Agent Results</h2>
+        <div class="agent-cards">
+            <!-- Data Collection Agent -->
+            <div class="agent-card">
+                <h3>
+                    <div class="agent-badge">1</div>
+                    Data Collection Agent
+                </h3>
+                <div class="metric-row">
+                    <span class="metric-label">Articles Collected</span>
+                    <span class="metric-value">10</span>
+                </div>
+                <div class="metric-row">
+                    <span class="metric-label">Timeframe</span>
+                    <span class="metric-value">7 days</span>
+                </div>
+                <div class="metric-row">
+                    <span class="metric-label">Total Available</span>
+                    <span class="metric-value">1,467</span>
+                </div>
+                <div style="margin-top: 1rem;">
+                    <span class="chip success">✓ COMPLETE</span>
+                </div>
+            </div>
+
+            <!-- Sentiment Analysis Agent -->
+            <div class="agent-card">
+                <h3>
+                    <div class="agent-badge">2</div>
+                    Sentiment Analysis Agent
+                </h3>
+                <div class="metric-row">
+                    <span class="metric-label">Total Analyzed</span>
+                    <span class="metric-value">10</span>
+                </div>
+                <div class="metric-row">
+                    <span class="metric-label">Positive</span>
+                    <span class="metric-value" style="color: #2e7d32;">1</span>
+                </div>
+                <div class="metric-row">
+                    <span class="metric-label">Neutral</span>
+                    <span class="metric-value" style="color: #0288d1;">7</span>
+                </div>
+                <div class="metric-row">
+                    <span class="metric-label">Negative</span>
+                    <span class="metric-value" style="color: #c62828;">2</span>
+                </div>
+                <div style="margin-top: 1rem;">
+                    <span class="chip success">✓ COMPLETE</span>
+                </div>
+            </div>
+
+            <!-- Response Generation Agent -->
+            <div class="agent-card">
+                <h3>
+                    <div class="agent-badge">3</div>
+                    Response Generation Agent
+                </h3>
+                <div class="metric-row">
+                    <span class="metric-label">Risk Level</span>
+                    <span class="metric-value" style="color: #2e7d32;">LOW</span>
+                </div>
+                <div class="metric-row">
+                    <span class="metric-label">Recommendations</span>
+                    <span class="metric-value">1</span>
+                </div>
+                <div class="metric-row">
+                    <span class="metric-label">Next Actions</span>
+                    <span class="metric-value">2</span>
+                </div>
+                <div class="metric-row">
+                    <span class="metric-label">Status</span>
+                    <span class="metric-value">Ready</span>
+                </div>
+                <div style="margin-top: 1rem;">
+                    <span class="chip success">✓ COMPLETE</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Recommendations & Actions -->
+        <div class="recommendations-section">
+            <div>
+                <h2 class="section-title">💡 Recommendations</h2>
+                <div class="recommendation-item">
+                    Continue monitoring – sentiment distribution remains balanced.
+                </div>
+            </div>
+            <div>
+                <h2 class="section-title">📋 Next Actions</h2>
+                <div class="action-item">
+                    Review detailed sentiment breakdown below
+                </div>
+                <div class="action-item">
+                    Track key metrics in next 24-hour cycle
+                </div>
+            </div>
+        </div>
+
+        <!-- Articles Section -->
+        <div class="articles-section">
+            <h2 class="section-title">📰 Analyzed Articles (10)</h2>
+            <div class="articles-grid">
+                <!-- Article 1 -->
+                <div class="article-card">
+                    <div class="article-title">OpenAI, AMD, Broadcom unite behind Ethernet to reshape AI infrastructure</div>
+                    <div class="article-meta">
+                        <span class="article-source">Reuters</span>
+                        <span class="article-date">Oct 26, 2025</span>
+                    </div>
+                    <div class="article-excerpt">Three tech companies announce partnership for unified Ethernet standards in AI infrastructure...</div>
+                    <div class="article-footer">
+                        <span class="sentiment-badge neutral">Neutral (-0.05)</span>
+                        <a href="https://www.reuters.com" class="article-link" target="_blank">Read →</a>
+                    </div>
+                    <div class="keywords">
+                        <span class="keyword-tag">openai</span>
+                        <span class="keyword-tag">broadcom</span>
+                        <span class="keyword-tag">ethernet</span>
+                    </div>
+                </div>
+
+                <!-- Article 2 -->
+                <div class="article-card">
+                    <div class="article-title">Intel reaffirms 14A, deepens Nvidia alliance</div>
+                    <div class="article-meta">
+                        <span class="article-source">TechCrunch</span>
+                        <span class="article-date">Oct 25, 2025</span>
+                    </div>
+                    <div class="article-excerpt">Intel CEO confirms continuation of 14A process node, strengthens partnership with Nvidia...</div>
+                    <div class="article-footer">
+                        <span class="sentiment-badge neutral">Neutral (0.00)</span>
+                        <a href="https://www.techcrunch.com" class="article-link" target="_blank">Read →</a>
+                    </div>
+                    <div class="keywords">
+                        <span class="keyword-tag">intel</span>
+                        <span class="keyword-tag">nvidia</span>
+                        <span class="keyword-tag">alliance</span>
+                    </div>
+                </div>
+
+                <!-- Article 3 -->
+                <div class="article-card">
+                    <div class="article-title">Investors use dotcom era playbook to dodge AI bubble risks</div>
+                    <div class="article-meta">
+                        <span class="article-source">Yahoo Finance</span>
+                        <span class="article-date">Oct 25, 2025</span>
+                    </div>
+                    <div class="article-excerpt">Market analysts warn of potential AI bubble, investors drawing parallels to 2000 dot-com crash...</div>
+                    <div class="article-footer">
+                        <span class="sentiment-badge negative">Negative (-0.35)</span>
+                        <a href="https://www.yahoo.com" class="article-link" target="_blank">Read →</a>
+                    </div>
+                    <div class="keywords">
+                        <span class="keyword-tag">ai-bubble</span>
+                        <span class="keyword-tag">dotcom</span>
+                        <span class="keyword-tag">risk</span>
+                    </div>
+                </div>
+
+                <!-- Article 4 -->
+                <div class="article-card">
+                    <div class="article-title">US stocks hit record high after soft CPI, led by tech mega-cap gains</div>
+                    <div class="article-meta">
+                        <span class="article-source">Bloomberg</span>
+                        <span class="article-date">Oct 24, 2025</span>
+                    </div>
+                    <div class="article-excerpt">Stock market reaches all-time high with tech companies like Nvidia showing strong performance...</div>
+                    <div class="article-footer">
+                        <span class="sentiment-badge positive">Positive (0.45)</span>
+                        <a href="https://www.bloomberg.com" class="article-link" target="_blank">Read →</a>
+                    </div>
+                    <div class="keywords">
+                        <span class="keyword-tag">stocks</span>
+                        <span class="keyword-tag">tech</span>
+                        <span class="keyword-tag">gains</span>
+                    </div>
+                </div>
+
+                <!-- Article 5 -->
+                <div class="article-card">
+                    <div class="article-title">Nvidia launches new H200 GPU for enterprise AI workloads</div>
+                    <div class="article-meta">
+                        <span class="article-source">TechNews</span>
+                        <span class="article-date">Oct 23, 2025</span>
+                    </div>
+                    <div class="article-excerpt">Latest H200 GPU features improved performance and efficiency for enterprise clients...</div>
+                    <div class="article-footer">
+                        <span class="sentiment-badge neutral">Neutral (0.10)</span>
+                        <a href="https://www.technews.com" class="article-link" target="_blank">Read →</a>
+                    </div>
+                    <div class="keywords">
+                        <span class="keyword-tag">h200</span>
+                        <span class="keyword-tag">gpu</span>
+                        <span class="keyword-tag">ai</span>
+                    </div>
+                </div>
+
+                <!-- Article 6 -->
+                <div class="article-card">
+                    <div class="article-title">Data center demand drives semiconductor innovation race</div>
+                    <div class="article-meta">
+                        <span class="article-source">Semiconductor Today</span>
+                        <span class="article-date">Oct 22, 2025</span>
+                    </div>
+                    <div class="article-excerpt">Increasing demand for AI-ready data centers pushes chip manufacturers to innovate rapidly...</div>
+                    <div class="article-footer">
+                        <span class="sentiment-badge neutral">Neutral (0.05)</span>
+                        <a href="https://www.semiconductortoday.com" class="article-link" target="_blank">Read →</a>
+                    </div>
+                    <div class="keywords">
+                        <span class="keyword-tag">datacenters</span>
+                        <span class="keyword-tag">semiconductors</span>
+                        <span class="keyword-tag">innovation</span>
+                    </div>
+                </div>
+
+                <!-- Article 7 -->
+                <div class="article-card">
+                    <div class="article-title">Open source AI models challenge proprietary platforms</div>
+                    <div class="article-meta">
+                        <span class="article-source">AI Weekly</span>
+                        <span class="article-date">Oct 21, 2025</span>
+                    </div>
+                    <div class="article-excerpt">Open source AI initiatives gain traction, potentially disrupting proprietary AI market...</div>
+                    <div class="article-footer">
+                        <span class="sentiment-badge neutral">Neutral (-0.05)</span>
+                        <a href="https://www.aiweekly.com" class="article-link" target="_blank">Read →</a>
+                    </div>
+                    <div class="keywords">
+                        <span class="keyword-tag">open-source</span>
+                        <span class="keyword-tag">ai-models</span>
+                        <span class="keyword-tag">challenge</span>
+                    </div>
+                </div>
+
+                <!-- Article 8 -->
+                <div class="article-card">
+                    <div class="article-title">Enterprise adopts Nvidia accelerated computing platform</div>
+                    <div class="article-meta">
+                        <span class="article-source">Enterprise IT</span>
+                        <span class="article-date">Oct 20, 2025</span>
+                    </div>
+                    <div class="article-excerpt">Major enterprises accelerate adoption of Nvidia's CUDA platform for production AI workloads...</div>
+                    <div class="article-footer">
+                        <span class="sentiment-badge neutral">Neutral (0.15)</span>
+                        <a href="https://www.enterpriseit.com" class="article-link" target="_blank">Read →</a>
+                    </div>
+                    <div class="keywords">
+                        <span class="keyword-tag">enterprise</span>
+                        <span class="keyword-tag">cuda</span>
+                        <span class="keyword-tag">adoption</span>
+                    </div>
+                </div>
+
+                <!-- Article 9 -->
+                <div class="article-card">
+                    <div class="article-title">Regulatory scrutiny increases on AI chip manufacturers</div>
+                    <div class="article-meta">
+                        <span class="article-source">Policy Watch</span>
+                        <span class="article-date">Oct 19, 2025</span>
+                    </div>
+                    <div class="article-excerpt">Government regulators examine AI chip market concentration and export policies...</div>
+                    <div class="article-footer">
+                        <span class="sentiment-badge negative">Negative (-0.25)</span>
+                        <a href="https://www.policywatch.com" class="article-link" target="_blank">Read →</a>
+                    </div>
+                    <div class="keywords">
+                        <span class="keyword-tag">regulation</span>
+                        <span class="keyword-tag">scrutiny</span>
+                        <span class="keyword-tag">chips</span>
+                    </div>
+                </div>
+
+                <!-- Article 10 -->
+                <div class="article-card">
+                    <div class="article-title">Nvidia stock remains strong amid market volatility</div>
+                    <div class="article-meta">
+                        <span class="article-source">Market Watch</span>
+                        <span class="article-date">Oct 18, 2025</span>
+                    </div>
+                    <div class="article-excerpt">Despite market concerns, Nvidia stock maintains position as top performer in tech sector...</div>
+                    <div class="article-footer">
+                        <span class="sentiment-badge neutral">Neutral (0.20)</span>
+                        <a href="https://www.marketwatch.com" class="article-link" target="_blank">Read →</a>
+                    </div>
+                    <div class="keywords">
+                        <span class="keyword-tag">stock</span>
+                        <span class="keyword-tag">performance</span>
+                        <span class="keyword-tag">tech</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="footer">
+            <p>📊 NVIDIA Brand Reputation Management System • Prototype Demo • October 26, 2025</p>
+            <p style="font-size: 0.9rem; margin-top: 0.5rem; color: #999;">
+                All data embedded • No backend required • Ready to share with stakeholders
+            </p>
+        </div>
+    </div>
+
+    <script>
+        // Sentiment Chart
+        const ctx = document.getElementById('sentimentChart').getContext('2d');
+        new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Positive', 'Neutral', 'Negative'],
+                datasets: [{
+                    data: [1, 7, 2],
+                    backgroundColor: [
+                        '#2e7d32',
+                        '#0288d1',
+                        '#c62828'
+                    ],
+                    borderColor: '#fff',
+                    borderWidth: 3,
+                    hoverBorderWidth: 4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: {
+                            padding: 15,
+                            font: { size: 14, weight: 600 },
+                            color: '#1a1a1a'
+                        }
+                    }
+                }
+            }
+        });
+    </script>
+</body>
+</html>

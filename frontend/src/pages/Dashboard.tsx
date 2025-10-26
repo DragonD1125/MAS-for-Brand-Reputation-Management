@@ -1,344 +1,722 @@
-import React, { useState, useEffect } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
+  Alert,
   Box,
+  Button,
+  Chip,
+  CircularProgress,
   Grid,
   Paper,
+  Stack,
+  TextField,
   Typography,
+  Tabs,
+  Tab,
+  LinearProgress,
   Card,
   CardContent,
-  CircularProgress,
-  Alert,
-  Chip,
 } from '@mui/material';
-import {
-  TrendingUp,
-  TrendingDown,
-  Warning,
-  CheckCircle,
-  Error,
-  Timeline,
-} from '@mui/icons-material';
-import {
-  LineChart,
-  Line,
-  AreaChart,
-  Area,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  Legend,
-  ResponsiveContainer,
-  PieChart,
-  Pie,
-  Cell,
-} from 'recharts';
-import { useQuery } from '@tanstack/react-query';
-import { monitoringApi, analyticsApi } from '../services/api';
-import { toast } from 'react-toastify';
+import { useMutation } from '@tanstack/react-query';
+import { Pie, PieChart, Cell, ResponsiveContainer, Tooltip, Legend, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
+import LaunchIcon from '@mui/icons-material/Launch';
+import TrendingUpIcon from '@mui/icons-material/TrendingUp';
+import TrendingDownIcon from '@mui/icons-material/TrendingDown';
+import InfoIcon from '@mui/icons-material/Info';
+import ArticleIcon from '@mui/icons-material/Article';
+import SchemaIcon from '@mui/icons-material/Schema';
+import TimelineIcon from '@mui/icons-material/Timeline';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import ErrorIcon from '@mui/icons-material/Error';
 
-interface MetricsData {
-  total_mentions: number;
-  sentiment_score: number;
-  crisis_alerts: number;
-  processed_today: number;
-  autonomous_actions: number;
-  hitl_pending: number;
+import {
+  analyticsApi,
+  BrandAnalysisPayload,
+  BrandAnalysisResponse,
+} from '../services/api';
+
+const sentimentColors: Record<string, string> = {
+  positive: '#2e7d32',
+  neutral: '#0288d1',
+  negative: '#c62828',
+};
+
+interface TabPanelProps {
+  children?: React.ReactNode;
+  index: number;
+  value: number;
 }
 
-interface SentimentTrend {
-  timestamp: string;
-  positive: number;
-  negative: number;
-  neutral: number;
-  overall_score: number;
+function TabPanel(props: TabPanelProps) {
+  const { children, value, index, ...other } = props;
+
+  return (
+    <div
+      role="tabpanel"
+      hidden={value !== index}
+      id={`tabpanel-${index}`}
+      aria-labelledby={`tab-${index}`}
+      {...other}
+    >
+      {value === index && <Box sx={{ pt: 3 }}>{children}</Box>}
+    </div>
+  );
 }
 
 const Dashboard: React.FC = () => {
-  const [timeRange, setTimeRange] = useState('24h');
+  const [brandName, setBrandName] = useState('Acme Corp');
+  const [maxArticles, setMaxArticles] = useState(10);
+  const [daysBack, setDaysBack] = useState(7);
+  const [tabValue, setTabValue] = useState(0);
 
-  // Fetch real-time metrics
-  const { data: metrics, isLoading: metricsLoading, error: metricsError } = useQuery({
-    queryKey: ['metrics'],
-    queryFn: () => monitoringApi.getMetrics().then(res => res.data),
-    refetchInterval: 30000, // Refetch every 30 seconds
-    onError: () => toast.error('Failed to fetch metrics')
+  const analysisMutation = useMutation<BrandAnalysisResponse, Error, BrandAnalysisPayload>({
+    mutationFn: (payload) => analyticsApi.runBrandAnalysis(payload).then((res) => res.data),
   });
 
-  // Fetch sentiment trends
-  const { data: sentimentTrends, isLoading: trendsLoading } = useQuery({
-    queryKey: ['sentiment-trends', timeRange],
-    queryFn: () => analyticsApi.getSentimentTrends({ range: timeRange }).then(res => res.data),
-    refetchInterval: 60000, // Refetch every minute
-    onError: () => toast.error('Failed to fetch sentiment trends')
+  const orchestrationMutation = useMutation<any, Error, BrandAnalysisPayload>({
+    mutationFn: (payload) => analyticsApi.runOrchestration(payload).then((res) => res.data),
   });
 
-  // Fetch system health
-  const { data: systemHealth, isLoading: healthLoading } = useQuery({
-    queryKey: ['system-health'],
-    queryFn: () => monitoringApi.getSystemHealth().then(res => res.data),
-    refetchInterval: 15000, // Refetch every 15 seconds
-  });
+  const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!brandName.trim()) {
+      return;
+    }
 
-  if (metricsError) {
-    return (
-      <Box p={3}>
-        <Alert severity="error">
-          Failed to connect to the autonomous system. Please check if the backend is running.
-        </Alert>
-      </Box>
-    );
-  }
+    const payload = {
+      brand_name: brandName.trim(),
+      max_articles: Math.min(25, Math.max(3, maxArticles)),
+      days_back: Math.min(30, Math.max(1, daysBack)),
+    };
 
-  const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042'];
-
-  const formatSentimentData = (trends: SentimentTrend[]) => {
-    if (!trends) return [];
-    return trends.map(trend => ({
-      time: new Date(trend.timestamp).toLocaleDateString(),
-      positive: trend.positive,
-      negative: trend.negative,
-      neutral: trend.neutral,
-      score: trend.overall_score,
-    }));
+    if (tabValue === 0) {
+      analysisMutation.mutate(payload);
+    } else {
+      orchestrationMutation.mutate(payload);
+    }
   };
 
-  const MetricCard = ({ title, value, icon, trend, color = 'primary' }: any) => (
-    <Card sx={{ height: '100%', bgcolor: 'background.paper' }}>
-      <CardContent>
-        <Box display="flex" justifyContent="space-between" alignItems="center">
-          <Box>
-            <Typography color="textSecondary" gutterBottom variant="body2">
-              {title}
-            </Typography>
-            <Typography variant="h4" component="div" color={color}>
-              {metricsLoading ? <CircularProgress size={24} /> : value}
-            </Typography>
-          </Box>
-          <Box display="flex" flexDirection="column" alignItems="center">
-            {icon}
-            {trend && (
-              <Box display="flex" alignItems="center" mt={1}>
-                {trend > 0 ? <TrendingUp color="success" /> : <TrendingDown color="error" />}
-                <Typography variant="caption" color={trend > 0 ? 'success.main' : 'error.main'}>
-                  {Math.abs(trend)}%
-                </Typography>
-              </Box>
-            )}
-          </Box>
-        </Box>
-      </CardContent>
-    </Card>
-  );
+  const analysis = analysisMutation.data;
+  const orchestration = orchestrationMutation.data;
+  const isLoading = analysisMutation.isLoading || orchestrationMutation.isLoading;
+
+  const sentimentBreakdown = useMemo(() => {
+    if (!analysis) return [];
+    return [
+      { name: 'Positive', value: analysis.summary.positive, fill: sentimentColors.positive },
+      { name: 'Neutral', value: analysis.summary.neutral, fill: sentimentColors.neutral },
+      { name: 'Negative', value: analysis.summary.negative, fill: sentimentColors.negative },
+    ];
+  }, [analysis]);
+
+  const orchestrationBreakdown = useMemo(() => {
+    if (!orchestration) return [];
+    return [
+      {
+        name: 'Positive',
+        value: orchestration.summary.positive,
+        fill: sentimentColors.positive,
+      },
+      { name: 'Neutral', value: orchestration.summary.neutral, fill: sentimentColors.neutral },
+      {
+        name: 'Negative',
+        value: orchestration.summary.negative,
+        fill: sentimentColors.negative,
+      },
+    ];
+  }, [orchestration]);
 
   return (
-    <Box p={3}>
-      <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
-        <Typography variant="h4" component="h1" fontWeight="bold">
-          Autonomous System Dashboard
-        </Typography>
-        <Box display="flex" gap={1}>
-          <Chip
-            label={systemHealth?.status || 'Unknown'}
-            color={systemHealth?.status === 'healthy' ? 'success' : 'error'}
-            icon={systemHealth?.status === 'healthy' ? <CheckCircle /> : <Error />}
-          />
-        </Box>
-      </Box>
-
-      {/* Real-time Metrics Grid */}
-      <Grid container spacing={3} mb={3}>
-        <Grid item xs={12} sm={6} md={2}>
-          <MetricCard
-            title="Total Mentions"
-            value={metrics?.total_mentions || 0}
-            icon={<Timeline color="primary" />}
-            trend={5.2}
-          />
-        </Grid>
-        <Grid item xs={12} sm={6} md={2}>
-          <MetricCard
-            title="Sentiment Score"
-            value={metrics?.sentiment_score ? `${(metrics.sentiment_score * 100).toFixed(1)}%` : '0%'}
-            icon={<TrendingUp color="success" />}
-            trend={2.1}
-            color="success.main"
-          />
-        </Grid>
-        <Grid item xs={12} sm={6} md={2}>
-          <MetricCard
-            title="Crisis Alerts"
-            value={metrics?.crisis_alerts || 0}
-            icon={<Warning color="warning" />}
-            trend={-10.5}
-            color="warning.main"
-          />
-        </Grid>
-        <Grid item xs={12} sm={6} md={2}>
-          <MetricCard
-            title="Processed Today"
-            value={metrics?.processed_today || 0}
-            icon={<CheckCircle color="info" />}
-            trend={15.3}
-            color="info.main"
-          />
-        </Grid>
-        <Grid item xs={12} sm={6} md={2}>
-          <MetricCard
-            title="Autonomous Actions"
-            value={metrics?.autonomous_actions || 0}
-            icon={<Timeline color="secondary" />}
-            trend={8.7}
-            color="secondary.main"
-          />
-        </Grid>
-        <Grid item xs={12} sm={6} md={2}>
-          <MetricCard
-            title="HITL Pending"
-            value={metrics?.hitl_pending || 0}
-            icon={<Warning color="error" />}
-            color="error.main"
-          />
-        </Grid>
-      </Grid>
-
+    <Box p={{ xs: 2, md: 4 }}>
       <Grid container spacing={3}>
-        {/* Sentiment Trends Chart */}
-        <Grid item xs={12} md={8}>
-          <Paper sx={{ p: 3, height: 400 }}>
-            <Typography variant="h6" gutterBottom>
-              Sentiment Trends (24h)
-            </Typography>
-            {trendsLoading ? (
-              <Box display="flex" justifyContent="center" alignItems="center" height={300}>
-                <CircularProgress />
-              </Box>
-            ) : (
-              <ResponsiveContainer width="100%" height={300}>
-                <AreaChart data={formatSentimentData(sentimentTrends)}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="time" />
-                  <YAxis />
-                  <Tooltip />
-                  <Legend />
-                  <Area
-                    type="monotone"
-                    dataKey="positive"
-                    stackId="1"
-                    stroke="#4caf50"
-                    fill="#4caf50"
-                    fillOpacity={0.6}
-                  />
-                  <Area
-                    type="monotone"
-                    dataKey="neutral"
-                    stackId="1"
-                    stroke="#ff9800"
-                    fill="#ff9800"
-                    fillOpacity={0.6}
-                  />
-                  <Area
-                    type="monotone"
-                    dataKey="negative"
-                    stackId="1"
-                    stroke="#f44336"
-                    fill="#f44336"
-                    fillOpacity={0.6}
-                  />
-                </AreaChart>
-              </ResponsiveContainer>
-            )}
-          </Paper>
-        </Grid>
-
-        {/* System Status */}
         <Grid item xs={12} md={4}>
-          <Paper sx={{ p: 3, height: 400 }}>
-            <Typography variant="h6" gutterBottom>
-              System Status
+          <Paper elevation={2} sx={{ p: 3 }}>
+            <Typography variant="h6" fontWeight={600} gutterBottom>
+              Run Brand Analysis
             </Typography>
-            {healthLoading ? (
-              <Box display="flex" justifyContent="center" alignItems="center" height={300}>
-                <CircularProgress />
-              </Box>
-            ) : (
-              <Box>
-                <Box mb={2}>
-                  <Typography variant="body2" color="textSecondary">
-                    AI Agents Status
-                  </Typography>
-                  <Box display="flex" gap={1} mt={1}>
-                    <Chip label="Data Collection" color="success" size="small" />
-                    <Chip label="Sentiment Analysis" color="success" size="small" />
-                    <Chip label="Alert Management" color="success" size="small" />
-                  </Box>
-                </Box>
-                
-                <Box mb={2}>
-                  <Typography variant="body2" color="textSecondary">
-                    Last Action
-                  </Typography>
-                  <Typography variant="body1">
-                    Processed 15 new mentions
-                  </Typography>
-                  <Typography variant="caption" color="textSecondary">
-                    2 minutes ago
-                  </Typography>
-                </Box>
+            <Tabs
+              value={tabValue}
+              onChange={(_, newValue) => setTabValue(newValue)}
+              sx={{ mb: 2, borderBottom: 1, borderColor: 'divider' }}
+              aria-label="analysis tabs"
+            >
+              <Tab label="Quick Analysis" icon={<ArticleIcon />} iconPosition="start" />
+              <Tab label="Full Orchestration" icon={<SchemaIcon />} iconPosition="start" />
+            </Tabs>
 
-                <Box mb={2}>
-                  <Typography variant="body2" color="textSecondary">
-                    API Response Time
-                  </Typography>
-                  <Typography variant="h6" color="success.main">
-                    {systemHealth?.response_time_ms || 0}ms
-                  </Typography>
-                </Box>
+            {tabValue === 0 && (
+              <Typography variant="body2" color="text.secondary" mb={2}>
+                Enter a brand to fetch the latest articles from NewsAPI and generate sentiment insights.
+              </Typography>
+            )}
+            {tabValue === 1 && (
+              <Typography variant="body2" color="text.secondary" mb={2}>
+                Run all three agents (Data Collection, Sentiment Analysis, Response Generation) with full orchestration.
+              </Typography>
+            )}
 
-                <Box>
-                  <Typography variant="body2" color="textSecondary">
-                    Memory Usage
-                  </Typography>
-                  <Box display="flex" alignItems="center" gap={1}>
-                    <CircularProgress
-                      variant="determinate"
-                      value={systemHealth?.memory_usage_percent || 0}
-                      size={24}
-                    />
-                    <Typography variant="body2">
-                      {systemHealth?.memory_usage_percent || 0}%
-                    </Typography>
-                  </Box>
-                </Box>
-              </Box>
+            <Box component="form" onSubmit={handleSubmit} noValidate>
+              <Stack spacing={2}>
+                <TextField
+                  label="Brand name"
+                  value={brandName}
+                  onChange={(event) => setBrandName(event.target.value)}
+                  fullWidth
+                  required
+                />
+                <TextField
+                  label="Articles to fetch"
+                  type="number"
+                  value={maxArticles}
+                  onChange={(event) => {
+                    const value = Number(event.target.value);
+                    setMaxArticles(Number.isNaN(value) ? 10 : value);
+                  }}
+                  inputProps={{ min: 3, max: 25 }}
+                  fullWidth
+                />
+                <TextField
+                  label="Days to look back"
+                  type="number"
+                  value={daysBack}
+                  onChange={(event) => {
+                    const value = Number(event.target.value);
+                    setDaysBack(Number.isNaN(value) ? 7 : value);
+                  }}
+                  inputProps={{ min: 1, max: 30 }}
+                  fullWidth
+                />
+                <Button
+                  type="submit"
+                  variant="contained"
+                  size="large"
+                  disabled={isLoading}
+                >
+                  {isLoading ? 'Analyzing…' : tabValue === 0 ? 'Analyze Brand' : 'Run Orchestration'}
+                </Button>
+              </Stack>
+            </Box>
+
+            {analysisMutation.isError && (
+              <Alert severity="error" sx={{ mt: 2 }}>
+                {analysisMutation.error?.message || 'Analysis failed. Please try again.'}
+              </Alert>
+            )}
+            {orchestrationMutation.isError && (
+              <Alert severity="error" sx={{ mt: 2 }}>
+                {orchestrationMutation.error?.message || 'Orchestration failed. Please try again.'}
+              </Alert>
             )}
           </Paper>
         </Grid>
 
-        {/* Recent Activity Feed */}
-        <Grid item xs={12}>
-          <Paper sx={{ p: 3 }}>
-            <Typography variant="h6" gutterBottom>
-              Recent Autonomous Actions
-            </Typography>
-            <Box>
-              {[1, 2, 3, 4, 5].map((item) => (
-                <Box key={item} display="flex" alignItems="center" gap={2} p={1} borderBottom="1px solid rgba(255,255,255,0.1)">
-                  <CheckCircle color="success" fontSize="small" />
-                  <Box flexGrow={1}>
-                    <Typography variant="body2">
-                      Analyzed mention from @user{item} - Sentiment: Positive
-                    </Typography>
-                    <Typography variant="caption" color="textSecondary">
-                      {item} minutes ago
-                    </Typography>
-                  </Box>
-                  <Chip label="Autonomous" size="small" color="secondary" />
+        <Grid item xs={12} md={8}>
+          <TabPanel value={tabValue} index={0}>
+            {/* Quick Analysis Tab */}
+            <Paper elevation={2} sx={{ p: 3 }}>
+              <Typography variant="h6" fontWeight={600} gutterBottom>
+                Sentiment Overview
+              </Typography>
+              {isLoading && !analysis ? (
+                <Box display="flex" justifyContent="center" alignItems="center" height={280}>
+                  <CircularProgress />
                 </Box>
-              ))}
-            </Box>
-          </Paper>
+              ) : analysis ? (
+                <Grid container spacing={3}>
+                  <Grid item xs={12} md={6}>
+                    <Box height={260}>
+                      <ResponsiveContainer width="100%" height="100%">
+                        <PieChart>
+                          <Pie
+                            data={sentimentBreakdown}
+                            dataKey="value"
+                            nameKey="name"
+                            innerRadius={60}
+                          >
+                            {sentimentBreakdown.map((entry, index) => (
+                              <Cell key={`cell-${entry.name}`} fill={entry.fill} />
+                            ))}
+                          </Pie>
+                          <Tooltip />
+                          <Legend />
+                        </PieChart>
+                      </ResponsiveContainer>
+                    </Box>
+                  </Grid>
+                  <Grid item xs={12} md={6}>
+                    <Stack spacing={1.5}>
+                      <Typography variant="subtitle1" fontWeight={600}>
+                        {analysis.brand_name}
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        Analysis ran at {new Date(analysis.fetched_at).toLocaleString()} covering
+                        the last {analysis.timeframe_days} days.
+                      </Typography>
+                      <Chip
+                        icon={
+                          analysis.summary.average_sentiment_score >= 0 ? (
+                            <TrendingUpIcon />
+                          ) : (
+                            <TrendingDownIcon />
+                          )
+                        }
+                        label={`Average sentiment score: ${analysis.summary.average_sentiment_score.toFixed(2)}`}
+                        color={
+                          analysis.summary.average_sentiment_score >= 0 ? 'success' : 'error'
+                        }
+                      />
+                      <Stack direction="row" spacing={1} flexWrap="wrap">
+                        <Chip color="success" label={`Positive: ${analysis.summary.positive}`} />
+                        <Chip color="info" label={`Neutral: ${analysis.summary.neutral}`} />
+                        <Chip color="error" label={`Negative: ${analysis.summary.negative}`} />
+                      </Stack>
+                    </Stack>
+                  </Grid>
+                </Grid>
+              ) : (
+                <Box
+                  height={260}
+                  display="flex"
+                  alignItems="center"
+                  justifyContent="center"
+                  sx={{ color: 'text.secondary' }}
+                >
+                  <Typography variant="body1">Run an analysis to see sentiment insights.</Typography>
+                </Box>
+              )}
+            </Paper>
+          </TabPanel>
+
+          <TabPanel value={tabValue} index={1}>
+            {/* Full Orchestration Tab */}
+            <Paper elevation={2} sx={{ p: 3 }}>
+              <Typography variant="h6" fontWeight={600} gutterBottom>
+                Multi-Agent Orchestration Results
+              </Typography>
+              {isLoading && !orchestration ? (
+                <Box display="flex" justifyContent="center" alignItems="center" height={280}>
+                  <Stack alignItems="center" spacing={2}>
+                    <CircularProgress />
+                    <Typography variant="body2">Running all 3 agents...</Typography>
+                  </Stack>
+                </Box>
+              ) : orchestration ? (
+                <Stack spacing={3}>
+                  {/* Execution Summary */}
+                  <Card variant="outlined">
+                    <CardContent>
+                      <Stack spacing={2}>
+                        <Box display="flex" justifyContent="space-between" alignItems="center">
+                          <Typography variant="subtitle1" fontWeight={600}>
+                            Workflow: {orchestration.workflow_id}
+                          </Typography>
+                          <Chip
+                            icon={orchestration.success ? <CheckCircleIcon /> : <ErrorIcon />}
+                            label={orchestration.success ? 'Success' : 'Failed'}
+                            color={orchestration.success ? 'success' : 'error'}
+                          />
+                        </Box>
+                        <Typography variant="body2" color="text.secondary">
+                          Execution Time: {orchestration.execution_time_seconds.toFixed(2)}s
+                        </Typography>
+                        <Stack direction="row" spacing={1}>
+                          {orchestration.steps_completed.map((step) => (
+                            <Chip
+                              key={step}
+                              icon={<CheckCircleIcon />}
+                              label={step.replace(/_/g, ' ')}
+                              color="success"
+                              size="small"
+                            />
+                          ))}
+                        </Stack>
+                      </Stack>
+                    </CardContent>
+                  </Card>
+
+                  {/* Sentiment Breakdown */}
+                  <Grid container spacing={2}>
+                    <Grid item xs={12} md={6}>
+                      <Box height={260}>
+                        <ResponsiveContainer width="100%" height="100%">
+                          <PieChart>
+                            <Pie
+                              data={orchestrationBreakdown}
+                              dataKey="value"
+                              nameKey="name"
+                              innerRadius={60}
+                            >
+                              {orchestrationBreakdown.map((entry, index) => (
+                                <Cell key={`cell-${entry.name}`} fill={entry.fill} />
+                              ))}
+                            </Pie>
+                            <Tooltip />
+                            <Legend />
+                          </PieChart>
+                        </ResponsiveContainer>
+                      </Box>
+                    </Grid>
+                    <Grid item xs={12} md={6}>
+                      <Stack spacing={1.5}>
+                        <Typography variant="subtitle2" fontWeight={600}>
+                          Sentiment Analysis Agent Results
+                        </Typography>
+                        <Box>
+                          <Typography variant="body2" color="text.secondary">
+                            Average Sentiment Score
+                          </Typography>
+                          <Typography variant="h6">
+                            {orchestration.summary.average_sentiment_score.toFixed(2)}
+                          </Typography>
+                        </Box>
+                        <Stack spacing={0.5}>
+                          {orchestrationBreakdown.map((item) => (
+                            <Box key={item.name} display="flex" justifyContent="space-between">
+                              <Typography variant="body2">{item.name}</Typography>
+                              <Typography variant="body2" fontWeight={500}>
+                                {item.value}
+                              </Typography>
+                            </Box>
+                          ))}
+                        </Stack>
+                      </Stack>
+                    </Grid>
+                  </Grid>
+
+                  {/* Risk Assessment */}
+                  <Card variant="outlined">
+                    <CardContent>
+                      <Typography variant="subtitle1" fontWeight={600} gutterBottom>
+                        Risk Assessment & Crisis Analysis
+                      </Typography>
+                      <Stack spacing={1.5}>
+                        <Box display="flex" justifyContent="space-between" alignItems="center">
+                          <Typography variant="body2">Crisis Score</Typography>
+                          <Typography variant="body2" fontWeight={600}>
+                            {orchestration.risk_assessments.crisis_score.toFixed(2)} / 1.00
+                          </Typography>
+                        </Box>
+                        <LinearProgress
+                          variant="determinate"
+                          value={orchestration.risk_assessments.crisis_score * 100}
+                          sx={{
+                            height: 8,
+                            borderRadius: 1,
+                            backgroundColor: '#e0e0e0',
+                            '& .MuiLinearProgress-bar': {
+                              backgroundColor:
+                                orchestration.risk_assessments.crisis_score > 0.6 ? '#c62828' : '#2e7d32',
+                            },
+                          }}
+                        />
+                        <Chip
+                          label={`Level: ${orchestration.risk_assessments.crisis_level}`}
+                          color={
+                            orchestration.risk_assessments.crisis_level === 'severe'
+                              ? 'error'
+                              : orchestration.risk_assessments.crisis_level === 'moderate'
+                              ? 'warning'
+                              : 'success'
+                          }
+                          size="small"
+                        />
+                        <Typography variant="body2" color="text.secondary">
+                          Negative Sentiment Ratio:{' '}
+                          {(orchestration.risk_assessments.negative_sentiment_ratio * 100).toFixed(1)}%
+                        </Typography>
+                      </Stack>
+                    </CardContent>
+                  </Card>
+
+                  {/* Recommendations */}
+                  <Card variant="outlined">
+                    <CardContent>
+                      <Typography variant="subtitle1" fontWeight={600} gutterBottom>
+                        Response Generation Agent - Recommendations
+                      </Typography>
+                      <Stack spacing={1}>
+                        {orchestration.recommendations.map((rec, idx) => (
+                          <Box key={idx} display="flex" gap={1} alignItems="flex-start">
+                            <InfoIcon color="primary" sx={{ mt: 0.5, flexShrink: 0 }} />
+                            <Typography variant="body2">{rec}</Typography>
+                          </Box>
+                        ))}
+                      </Stack>
+                    </CardContent>
+                  </Card>
+
+                  {/* Next Actions */}
+                  <Card variant="outlined">
+                    <CardContent>
+                      <Typography variant="subtitle1" fontWeight={600} gutterBottom>
+                        Next Actions
+                      </Typography>
+                      <Stack spacing={1}>
+                        {orchestration.next_actions.map((action, idx) => (
+                          <Box key={idx} display="flex" gap={1} alignItems="flex-start">
+                            <TimelineIcon color="secondary" sx={{ mt: 0.5, flexShrink: 0 }} />
+                            <Typography variant="body2">{action}</Typography>
+                          </Box>
+                        ))}
+                      </Stack>
+                    </CardContent>
+                  </Card>
+                </Stack>
+              ) : (
+                <Box
+                  height={260}
+                  display="flex"
+                  alignItems="center"
+                  justifyContent="center"
+                  sx={{ color: 'text.secondary' }}
+                >
+                  <Typography variant="body1">
+                    Run orchestration to see multi-agent results.
+                  </Typography>
+                </Box>
+              )}
+            </Paper>
+          </TabPanel>
         </Grid>
+
+        {/* Articles Section - Only show in Quick Analysis tab */}
+        {tabValue === 0 && analysis && (
+          <Grid item xs={12}>
+            <Grid container spacing={3}>
+              <Grid item xs={12} md={6}>
+                <Paper elevation={2} sx={{ p: 3, height: '100%' }}>
+                  <Typography variant="h6" fontWeight={600} gutterBottom>
+                    Key Insights
+                  </Typography>
+                  {analysis.summary.insights.length === 0 ? (
+                    <Typography variant="body2" color="text.secondary">
+                      No notable insights detected from the current batch of articles.
+                    </Typography>
+                  ) : (
+                    <Stack spacing={1.5}>
+                      {analysis.summary.insights.map((insight) => (
+                        <Stack key={insight} direction="row" spacing={1} alignItems="center">
+                          <InfoIcon color="primary" fontSize="small" />
+                          <Typography variant="body2">{insight}</Typography>
+                        </Stack>
+                      ))}
+                    </Stack>
+                  )}
+                </Paper>
+              </Grid>
+              <Grid item xs={12} md={6}>
+                <Paper elevation={2} sx={{ p: 3, height: '100%' }}>
+                  <Typography variant="h6" fontWeight={600} gutterBottom>
+                    Recommended Next Steps
+                  </Typography>
+                  <Stack spacing={1.5}>
+                    {analysis.summary.recommendations.map((recommendation) => (
+                      <Stack key={recommendation} direction="row" spacing={1} alignItems="center">
+                        <TrendingUpIcon color="secondary" fontSize="small" />
+                        <Typography variant="body2">{recommendation}</Typography>
+                      </Stack>
+                    ))}
+                  </Stack>
+                </Paper>
+              </Grid>
+            </Grid>
+          </Grid>
+        )}
+
+        {/* Articles Section */}
+        {tabValue === 0 && analysis && (
+          <Grid item xs={12}>
+            <Paper elevation={2} sx={{ p: 3 }}>
+              <Stack direction={{ xs: 'column', md: 'row' }} justifyContent="space-between" mb={2}>
+                <Typography variant="h6" fontWeight={600}>
+                  Latest Articles
+                </Typography>
+                <Stack direction="row" spacing={1} flexWrap="wrap">
+                  {analysis.summary.top_keywords.map((keyword) => (
+                    <Chip
+                      key={keyword}
+                      label={keyword}
+                      size="small"
+                      variant="outlined"
+                      color="primary"
+                    />
+                  ))}
+                </Stack>
+              </Stack>
+
+              <Stack spacing={2}>
+                {analysis.articles.length === 0 && (
+                  <Typography variant="body2" color="text.secondary">
+                    No recent articles found for this brand. Try widening the timeframe.
+                  </Typography>
+                )}
+
+                {analysis.articles.map((article) => (
+                  <Paper key={article.url ?? article.title} variant="outlined" sx={{ p: 2 }}>
+                    <Stack
+                      direction={{ xs: 'column', md: 'row' }}
+                      spacing={2}
+                      alignItems={{ md: 'center' }}
+                    >
+                      <Stack spacing={1} flex={1}>
+                        <Typography variant="subtitle1" fontWeight={600}>
+                          {article.title}
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary">
+                          {article.source || 'Unknown source'} •{' '}
+                          {article.published_at
+                            ? new Date(article.published_at).toLocaleString()
+                            : 'Date unavailable'}
+                        </Typography>
+                        {article.excerpt && (
+                          <Typography variant="body2" color="text.secondary">
+                            {article.excerpt}
+                          </Typography>
+                        )}
+                        <Stack direction="row" spacing={1} flexWrap="wrap">
+                          {article.keywords.slice(0, 4).map((keyword) => (
+                            <Chip key={keyword} label={keyword} size="small" />
+                          ))}
+                        </Stack>
+                      </Stack>
+
+                      <Stack spacing={1} alignItems={{ xs: 'flex-start', md: 'flex-end' }}>
+                        <Chip
+                          label={article.sentiment}
+                          color={
+                            article.sentiment === 'positive'
+                              ? 'success'
+                              : article.sentiment === 'negative'
+                              ? 'error'
+                              : 'info'
+                          }
+                        />
+                        <Typography variant="body2" color="text.secondary">
+                          Score: {article.sentiment_score.toFixed(2)}
+                        </Typography>
+                        {article.url && (
+                          <Button
+                            variant="text"
+                            size="small"
+                            href={article.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            endIcon={<LaunchIcon fontSize="small" />}
+                          >
+                            Read article
+                          </Button>
+                        )}
+                      </Stack>
+                    </Stack>
+                  </Paper>
+                ))}
+              </Stack>
+            </Paper>
+          </Grid>
+        )}
+
+        {/* Orchestration Articles Section */}
+        {tabValue === 1 && orchestration && (
+          <Grid item xs={12}>
+            <Paper elevation={2} sx={{ p: 3 }}>
+              <Stack direction={{ xs: 'column', md: 'row' }} justifyContent="space-between" mb={2}>
+                <Typography variant="h6" fontWeight={600}>
+                  Analyzed Articles ({orchestration.articles.length})
+                </Typography>
+                <Stack direction="row" spacing={1} flexWrap="wrap">
+                  {orchestration.summary.top_keywords.map((keyword) => (
+                    <Chip
+                      key={keyword}
+                      label={keyword}
+                      size="small"
+                      variant="outlined"
+                      color="primary"
+                    />
+                  ))}
+                </Stack>
+              </Stack>
+
+              <Stack spacing={2}>
+                {orchestration.articles.map((article) => (
+                  <Paper key={article.url ?? article.title} variant="outlined" sx={{ p: 2 }}>
+                    <Stack
+                      direction={{ xs: 'column', md: 'row' }}
+                      spacing={2}
+                      alignItems={{ md: 'center' }}
+                    >
+                      <Stack spacing={1} flex={1}>
+                        <Typography variant="subtitle1" fontWeight={600}>
+                          {article.title}
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary">
+                          {article.source || 'Unknown source'} •{' '}
+                          {article.published_at
+                            ? new Date(article.published_at).toLocaleString()
+                            : 'Date unavailable'}
+                        </Typography>
+                        {article.excerpt && (
+                          <Typography variant="body2" color="text.secondary">
+                            {article.excerpt}
+                          </Typography>
+                        )}
+                        <Stack direction="row" spacing={1} flexWrap="wrap">
+                          {article.keywords.slice(0, 4).map((keyword) => (
+                            <Chip key={keyword} label={keyword} size="small" />
+                          ))}
+                        </Stack>
+                      </Stack>
+
+                      <Stack spacing={1} alignItems={{ xs: 'flex-start', md: 'flex-end' }}>
+                        <Chip
+                          label={article.sentiment}
+                          color={
+                            article.sentiment === 'positive'
+                              ? 'success'
+                              : article.sentiment === 'negative'
+                              ? 'error'
+                              : 'info'
+                          }
+                        />
+                        <Typography variant="body2" color="text.secondary">
+                          Score: {article.sentiment_score.toFixed(2)}
+                        </Typography>
+                        {article.url && (
+                          <Button
+                            variant="text"
+                            size="small"
+                            href={article.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            endIcon={<LaunchIcon fontSize="small" />}
+                          >
+                            Read article
+                          </Button>
+                        )}
+                      </Stack>
+                    </Stack>
+                  </Paper>
+                ))}
+              </Stack>
+            </Paper>
+          </Grid>
+        )}
+
+        {!analysis && !orchestration && !isLoading && (
+          <Grid item xs={12}>
+            <Paper elevation={0} sx={{ mt: 4, p: 3, bgcolor: '#ffffff' }}>
+              <Stack direction="row" spacing={2} alignItems="center">
+                <ArticleIcon color="primary" />
+                <Box>
+                  <Typography variant="subtitle1" fontWeight={600}>
+                    Tip: Try multiple brands
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Start with your own brand, then compare with competitors to spot emerging trends.
+                  </Typography>
+                </Box>
+              </Stack>
+            </Paper>
+          </Grid>
+        )}
       </Grid>
     </Box>
   );

@@ -52,6 +52,7 @@ class Settings(BaseSettings):
     TWITTER_ACCESS_TOKEN: Optional[str] = None
     TWITTER_ACCESS_TOKEN_SECRET: Optional[str] = None
     TWITTER_BEARER_TOKEN: Optional[str] = None
+    ENABLE_TWITTER: bool = False
     
     FACEBOOK_APP_ID: Optional[str] = None
     FACEBOOK_ACCESS_TOKEN: Optional[str] = None
@@ -60,10 +61,12 @@ class Settings(BaseSettings):
     REDDIT_CLIENT_ID: Optional[str] = None
     REDDIT_CLIENT_SECRET: Optional[str] = None
     REDDIT_USER_AGENT: str = "BrandReputationBot/1.0 by YourUsername"
+    ENABLE_REDDIT: bool = False
     
     # Instagram API
     INSTAGRAM_ACCESS_TOKEN: Optional[str] = None
     INSTAGRAM_APP_SECRET: Optional[str] = None
+    ENABLE_INSTAGRAM: bool = False
     
     # News API
     NEWS_API_KEY: Optional[str] = None

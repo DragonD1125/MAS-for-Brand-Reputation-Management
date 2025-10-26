@@ -1,204 +1,176 @@
 # Brand Reputation Management System
 
-A comprehensive Multi-Agent AI system for real-time brand reputation monitoring and analysis across social media platforms and web sources.
+A streamlined NewsAPI-powered workflow for assessing brand reputation within minutes. The system collects recent
+articles for any brand, performs lightweight sentiment scoring, and presents actionable insights in a focused React
+dashboard. Social data connectors (Twitter/Reddit/Instagram) remain part of the codebase but are disabled by default so
+you can run the project end-to-end without additional credentials.
 
-## 🚀 Features
+## 🌟 Highlights
 
-### Core Capabilities
-- **Real-time Social Media Monitoring** - Track mentions across Twitter, Facebook, Instagram, Reddit, and news sources
-- **AI-Powered Sentiment Analysis** - Advanced NLP models for accurate sentiment detection and emotion analysis
-- **Intelligent Alert System** - Crisis detection with automated notifications and escalation workflows
-- **Multi-Agent Architecture** - Scalable, distributed system with specialized AI agents
-- **Competitive Intelligence** - Monitor competitors and industry trends
-- **Actionable Insights** - AI-generated recommendations and strategic analysis
+- **On-demand NewsAPI ingestion** – Provide a brand name, fetch up to 25 recent articles, and analyze coverage trends.
+- **Lightweight sentiment heuristics** – Classify each article as positive, neutral, or negative without heavyweight ML
+   dependencies.
+- **Concise insight engine** – Summaries include sentiment counts, trending keywords, and recommended follow-up steps.
+- **Modern React dashboard** – Single-page UI with a guided form, sentiment visualization, insights panels, and a clean
+   article list.
+- **Extensible multi-agent backend** – LangChain-based agents and social connectors are ready for future expansion but
+   safely toggled off in this configuration.
 
-### Technical Architecture
-- **Backend**: Python 3.11+ with FastAPI
-- **Frontend**: React.js with TypeScript (planned)
-- **Database**: PostgreSQL with SQLAlchemy ORM
-- **AI/ML**: Transformers, scikit-learn, NLTK, spaCy
-- **Multi-Agent System**: Custom asynchronous agent framework
-- **Deployment**: Docker containers with cloud deployment ready
+## ⚙️ Prerequisites
 
-## 🏗️ Multi-Agent System
+- Python 3.11+
+- Node.js 18+
+- A NewsAPI key (free tier works great): https://newsapi.org/
 
-### Agent Types
-1. **Data Collection Agent** - Monitors and collects data from various platforms
-2. **Sentiment Analysis Agent** - Processes content for sentiment and emotion analysis
-3. **Alert Management Agent** - Detects crises and manages notifications
-4. **Insight Generation Agent** - Creates actionable insights and recommendations
-5. **Agent Orchestrator** - Coordinates all agent activities
+All other integrations are optional. By default the backend runs against SQLite and only the NewsAPI-powered pipeline is
+active.
 
-### Agent Communication
-- Asynchronous message passing between agents
-- Event-driven architecture with correlation tracking
-- Fault-tolerant with automatic recovery
-- Real-time monitoring and health checks
+## 🚀 Quick Start
 
-## 🛠️ Setup & Installation
+### 1. Backend
 
-### Prerequisites
-- Python 3.11 or higher
-- PostgreSQL 13+ (or SQLite for development)
-- Redis (for caching and agent coordination)
-- Node.js 18+ (for frontend)
-
-### Backend Setup
-
-1. **Clone the repository**
-   ```bash
-   git clone <repository-url>
-   cd "MAS for Brand Reputation Management"
-   ```
-
-2. **Create virtual environment**
-   ```bash
-   cd backend
-   python -m venv venv
-   # Windows
-   venv\\Scripts\\activate
-   # Linux/Mac
-   source venv/bin/activate
-   ```
-
-3. **Install dependencies**
-   ```bash
-   pip install -r requirements.txt
-   ```
-
-4. **Environment Configuration**
-   Create a `.env` file in the backend directory:
-   ```env
-   # Database
-   DATABASE_URL=postgresql://user:password@localhost/brand_reputation
-   
-   # Redis
-   REDIS_URL=redis://localhost:6379/0
-   
-   # Social Media APIs (optional for development)
-   TWITTER_BEARER_TOKEN=your_twitter_bearer_token
-   FACEBOOK_ACCESS_TOKEN=your_facebook_token
-   
-   # Security
-   SECRET_KEY=your-secret-key-here
-   
-   # Development
-   DEBUG=True
-   ```
-
-5. **Initialize Database**
-   ```bash
-   # For development, SQLite is used by default
-   python main.py
-   ```
-
-6. **Start the application**
-   ```bash
-   python main.py
-   ```
-
-The API will be available at `http://localhost:8000`
-- API Documentation: `http://localhost:8000/docs`
-- Alternative docs: `http://localhost:8000/redoc`
-
-## 📊 API Endpoints
-
-### System Status
-- `GET /` - System overview and status
-- `GET /health` - Health check endpoint
-
-### Monitoring
-- `POST /api/v1/monitoring/start` - Start brand monitoring
-- `GET /api/v1/monitoring/status` - Get monitoring status
-- `GET /api/v1/monitoring/agents` - Agent status information
-- `GET /api/v1/monitoring/metrics` - System metrics
-
-### Brands (Planned)
-- `GET /api/v1/brands/` - List all brands
-- `POST /api/v1/brands/` - Create new brand
-- `GET /api/v1/brands/{id}` - Get brand details
-
-### Alerts (Planned)
-- `GET /api/v1/alerts/` - List active alerts
-- `POST /api/v1/alerts/{id}/acknowledge` - Acknowledge alert
-- `POST /api/v1/alerts/{id}/resolve` - Resolve alert
-
-## 🤖 Agent System Usage
-
-### Starting Monitoring
-```python
-# Example API call to start monitoring
-curl -X POST "http://localhost:8000/api/v1/monitoring/start" \\
--H "Content-Type: application/json" \\
--d '{
-  "brand_id": "my_brand",
-  "platforms": ["twitter", "facebook", "instagram"],
-  "keywords": ["my brand", "brand name", "product name"],
-  "timeframe": "1h"
-}'
-```
-
-### System Status
-```python
-# Check system health
-curl "http://localhost:8000/api/v1/monitoring/health"
-```
-
-## 🔧 Development
-
-### Project Structure
-```
-backend/
-├── main.py                    # FastAPI application entry point
-├── requirements.txt           # Python dependencies
-├── app/
-│   ├── __init__.py
-│   ├── agents/               # Multi-Agent System
-│   │   ├── base_agent.py    # Base agent class
-│   │   ├── data_collection_agent.py
-│   │   ├── sentiment_analysis_agent.py
-│   │   ├── alert_management_agent.py
-│   │   └── orchestrator.py  # Agent coordinator
-│   ├── api/                 # FastAPI routes
-│   │   ├── v1.py           # API version 1 router
-│   │   └── endpoints/       # API endpoints
-│   ├── core/               # Core configuration
-│   │   ├── config.py       # Settings
-│   │   └── database.py     # Database setup
-│   ├── models/             # Database models
-│   │   ├── brand.py
-│   │   ├── mention.py
-│   │   ├── sentiment.py
-│   │   ├── alert.py
-│   │   └── user.py
-│   └── services/           # Business logic services
-├── tests/                   # Test files
-├── docs/                   # Documentation
-└── config/                 # Configuration files
-```
-
-### Running Tests
 ```bash
 cd backend
-pytest tests/ -v
+python -m venv venv
+venv\Scripts\activate  # or `source venv/bin/activate` on macOS/Linux
+pip install -r requirements.txt
+
+# copy environment template and set keys
+cp .env.example .env
+# edit .env -> set NEWSAPI_KEY and GEMINI_API_KEY (if LLM orchestration needed)
+
+uvicorn main:app --reload
 ```
 
-### Code Quality
+The API runs at `http://localhost:8000`.
+
+### 2. Frontend
+
 ```bash
-# Format code
+cd frontend
+npm install
+npm start
+```
+
+The React app is available at `http://localhost:3000` and communicates with the backend’s `/api/v1` routes.
+
+## 🔐 Configuration Notes
+
+- `backend/.env.example` documents all available environment variables. For the News-only flow you only need:
+   - `NEWSAPI_KEY` – required to fetch live articles.
+   - `GEMINI_API_KEY` – optional unless you re-enable LangChain planning.
+- Social platform connectors are disabled by default using the new feature flags:
+   - `ENABLE_TWITTER=false`
+   - `ENABLE_REDDIT=false`
+   - `ENABLE_INSTAGRAM=false`
+   When you are ready to supply credentials, flip the flag to `true` and install the relevant Python packages.
+
+## 🧠 How the News Workflow Operates
+
+1. The frontend collects a brand name, article count (3–25), and timeframe (1–30 days).
+2. `POST /api/v1/analytics/brand-analysis` triggers the backend service to:
+    - Query NewsAPI through `MultiPlatformDataCollector` (news tool only).
+    - Run keyword-based sentiment heuristics for each article.
+    - Aggregate counts, trending keywords, and recommendations.
+3. The response powers the dashboard’s sentiment chart, insights, and article cards.
+
+The sentiment engine intentionally avoids heavy dependencies so the workflow stays fast on modest hardware. When you
+need deeper NLP, plug in the advanced models under `app/tools/analysis_tools.py`.
+
+## 📡 API Reference (Active Routes)
+
+| Method | Endpoint                              | Description                                   |
+|--------|----------------------------------------|-----------------------------------------------|
+| GET    | `/`                                    | Backend status and agent metadata.            |
+| GET    | `/health`                              | Basic health probe.                           |
+| GET    | `/api/v1/analytics/`                   | Simple status for the analytics module.       |
+| POST   | `/api/v1/analytics/brand-analysis`     | Run NewsAPI-driven sentiment analysis.        |
+
+Other routers (brands, monitoring, alerts) remain in place for future agent work but currently return placeholder
+responses.
+
+### Sample Request
+
+```bash
+curl -X POST http://localhost:8000/api/v1/analytics/brand-analysis \
+   -H "Content-Type: application/json" \
+   -d '{
+            "brand_name": "OpenAI",
+            "max_articles": 10,
+            "days_back": 7
+         }'
+```
+
+### Sample Response (abridged)
+
+```json
+{
+   "brand_name": "OpenAI",
+   "timeframe_days": 7,
+   "fetched_at": "2024-06-01T14:22:05.123456",
+   "summary": {
+      "total_articles": 10,
+      "positive": 6,
+      "neutral": 3,
+      "negative": 1,
+      "average_sentiment_score": 0.28,
+      "top_keywords": ["ai", "chatbot", "launch", "startup"],
+      "insights": ["Positive coverage outweighs negative mentions for OpenAI."],
+      "recommendations": ["Continue monitoring – sentiment distribution remains balanced."]
+   },
+   "articles": [
+      {
+         "title": "OpenAI announces new product",
+         "source": "Example News",
+         "sentiment": "positive",
+         "sentiment_score": 0.5,
+         "keywords": ["launch", "ai", "product"],
+         "url": "https://news.example.com/openai-launch"
+      }
+   ]
+}
+```
+
+## 🖥️ Frontend Experience
+
+- Launch the site and enter the brand you wish to monitor.
+- Choose how many articles to fetch (default 10) and the timeframe in days.
+- Review the sentiment pie chart, insight/recommendation panes, and the article list with quick actions.
+- Keywords appear as chips for easy scanning; click “Read article” to open the source in a new tab.
+
+Legacy navigation items (Mentions, Analytics, HITL, System Health) now display short informational stubs explaining that
+social integrations are offline in this mode.
+
+## 🔧 Extending the Platform
+
+- **Re-enable social connectors** by installing `tweepy`, `praw`, or other platform SDKs and turning on the corresponding
+   `ENABLE_*` flags.
+- **Swap in advanced sentiment** by invoking the transformer-based pipelines in `app/tools/analysis_tools.py`.
+- **Expand API surface** by wiring additional FastAPI endpoints under `app/api/endpoints/` and exposing them through the
+   React client.
+
+## 🧪 Testing & Quality
+
+```bash
+# Backend tests
+cd backend
+pytest -q
+
+# Formatting & linting suggestions
 black app/
-
-# Lint code
 flake8 app/
-
-# Type checking
-mypy app/
 ```
 
-## 🚀 Deployment
+## 🐞 Troubleshooting
 
-### Docker Deployment (Planned)
-```bash
+- **NewsAPI returns 401** – verify `NEWSAPI_KEY` and make sure it is not rate-limited.
+- **No articles found** – increase `days_back` or add alternate spellings for the brand name.
+- **Frontend cannot reach backend** – confirm the backend runs on `http://localhost:8000` and CORS settings include your
+   frontend origin.
+- **Optional agents crash during import** – ensure the related packages are installed or keep the `ENABLE_*` flags set to
+   `false`.
+
+Enjoy exploring your brand coverage! 🎯
 docker-compose up -d
 ```
 
